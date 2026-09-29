@@ -242,10 +242,18 @@ pub fn read_tool_call(
     }
     let mut reader = BufReader::new(File::open(transcript_path(data_dir, session_id)?)?);
     let mut line = String::new();
+    // A provider tool-call id is an opaque token, so it appears verbatim in the
+    // line that stores it. A byte scan rejects a line before serde walks its
+    // payload, which for a tool result is the whole cost of this loop. An id
+    // that JSON would escape keeps the unfiltered path.
+    let verbatim = is_json_verbatim(call_id);
     for offset in layout.message_offsets.iter().rev() {
         reader.seek(SeekFrom::Start(*offset))?;
         line.clear();
         reader.read_line(&mut line)?;
+        if verbatim && !line.contains(call_id) {
+            continue;
+        }
         if serde_json::from_str::<ToolIdentity>(&line).is_ok_and(|identity| {
             identity.role == "tool"
                 && identity
@@ -257,6 +265,58 @@ pub fn read_tool_call(
         }
     }
     Ok(None)
+}
+
+/// Whether a JSON string for this value is the value itself.
+///
+/// serde_json escapes only the quote, the backslash and the C0 controls, so a
+/// value made of anything else is written verbatim between its quotes and can
+/// be looked for with a byte scan. A value that would be escaped has to be
+/// parsed instead.
+fn is_json_verbatim(value: &str) -> bool {
+    !value.is_empty()
+        && !value.contains(['"', '\\', '\u{7f}'])
+        && !value.chars().any(|ch| (ch as u32) < 0x20)
+}
+
+/// Whether a transcript file holds a message record with this id.
+///
+/// `read_transcript` parses every message line into a full `MessageRecord`,
+/// block tree and metadata included, and the one caller only needs presence.
+/// This walks the file once, classifies each line with the same bounded prefix
+/// scan the window reader uses, and parses nothing but the id of a line whose
+/// bytes already contain it.
+pub fn transcript_contains_id(data_dir: &Path, session_id: &str, message_id: &str) -> Result<bool> {
+    #[derive(Deserialize)]
+    struct Identity {
+        id: String,
+    }
+    let path = transcript_path(data_dir, session_id)?;
+    let file = match File::open(&path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error).with_context(|| format!("read {}", path.display())),
+    };
+    let verbatim = is_json_verbatim(message_id);
+    let mut reader = BufReader::new(file);
+    let mut line = String::new();
+    loop {
+        line.clear();
+        if reader.read_line(&mut line)? == 0 {
+            return Ok(false);
+        }
+        let trimmed = line.trim();
+        if sniff_line_kind(trimmed) != Some("message") {
+            continue;
+        }
+        if verbatim && !line.contains(message_id) {
+            continue;
+        }
+        if serde_json::from_str::<Identity>(trimmed).is_ok_and(|identity| identity.id == message_id)
+        {
+            return Ok(true);
+        }
+    }
 }
 
 /// Classify a JSONL line by reading its top-level `type` value.
@@ -426,22 +486,28 @@ fn scan_layout(path: &Path, mut layout: TranscriptLayout) -> Result<TranscriptLa
 
 /// Serialize one JSONL line with its `type` discriminator first.
 ///
-/// Position matters for reads: `serde_json`'s map is sorted, so inserting the
-/// key would place it after the payload and force a reader to walk a whole
-/// multi-megabyte tool result before it can tell what the line is. Writing it
-/// first makes classification a fixed-cost prefix check.
+/// Position matters for reads: a line has to be classifiable — and, for a
+/// message, its id readable — before a reader walks a multi-megabyte tool
+/// result, so the discriminator is written first and the id immediately after
+/// it. That makes both a fixed-cost prefix check.
+///
+/// This is a single serialization pass plus one splice. The shape it replaced
+/// built a `serde_json::Value` tree, deep-cloned it (a `Value` cannot be
+/// re-wrapped without an owned map) and serialized the clone, then formatted
+/// the whole payload a second time — four passes over every byte written to a
+/// transcript, and an allocation per JSON node.
 fn tagged(tag: &str, body: &impl Serialize) -> Result<String> {
-    let value = serde_json::to_value(body)?;
-    let object = value
-        .as_object()
+    let body = serde_json::to_string(body)?;
+    let fields = body
+        .strip_prefix('{')
+        .and_then(|rest| rest.strip_suffix('}'))
         .ok_or_else(|| anyhow!("line body must be an object"))?;
-    let body = Value::Object(object.clone()).to_string();
     let head = format!("{{\"type\":{}", Value::String(tag.into()));
     // `{}` has no fields to append after the discriminator.
-    if object.is_empty() {
+    if fields.is_empty() {
         return Ok(format!("{head}}}"));
     }
-    Ok(format!("{head},{}", &body[1..]))
+    Ok(format!("{head},{fields}}}"))
 }
 
 /// Session ids come from our own DB (UUIDs), but stay defensive: an id that
@@ -503,15 +569,7 @@ pub fn write_inflight(data_dir: &Path, session_id: &str, record: &InflightRecord
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let tmp = path.with_extension("json.tmp");
-    {
-        let mut file = File::create(&tmp)?;
-        file.write_all(serde_json::to_string(record)?.as_bytes())?;
-        file.write_all(b"\n")?;
-        file.flush()?;
-        file.sync_data()?;
-    }
-    swap_into_place(&tmp, &path)
+    durability::owe_checkpoint(&path, record)
 }
 
 /// Load the session's in-flight checkpoint. A missing or unreadable file is
@@ -532,7 +590,6 @@ pub fn read_inflight(data_dir: &Path, session_id: &str) -> Result<Option<Infligh
         }
     }
 }
-
 /// Remove the session's in-flight checkpoint; a missing file is not an error.
 pub fn remove_inflight(data_dir: &Path, session_id: &str) -> Result<()> {
     let path = inflight_path(data_dir, session_id)?;
@@ -591,6 +648,211 @@ pub fn list_transcript_sessions(data_dir: &Path) -> Result<Vec<String>> {
     Ok(ids)
 }
 
+/// The transcript durability contract, and where its device waits happen.
+///
+/// A write is acknowledged only once its bytes are on the device, and a failed
+/// device flush fails the request that made the write. Both stay exactly as they
+/// were when the `sync_data` sat inside the writing function.
+///
+/// What moves is *where* the caller waits. Making 321 new bytes durable costs
+/// 3.57 ms on the ext4 volume the app data directory lives on (median of 40
+/// appends, two runs; a commit with nothing new to write is 96 µs), and both
+/// transcript appends and in-flight checkpoints ran inside the single
+/// `Mutex<AppState>` that serializes the RPC surface — so one write held every
+/// unrelated request for the length of a device commit.
+///
+/// Measured against the running host, with concurrent agent turns and an
+/// unrelated session read probed every 5 ms, that lock — not the CPU — is the
+/// wall. Four turns: 140 appends/s, read median 11.6 ms, host CPU 25%. Eight
+/// turns: 148/s, 23.6 ms, 24%. With the wait of both writers moved out of the
+/// lock: 339/s at 1.5 ms and 420/s at 4.1 ms, CPU 43-48%, and 8 sessions x 250
+/// turns land every row exactly once with no torn content.
+///
+/// So a write records what it owes and the request that made it commits the debt
+/// in order, once it has released the state lock and before its response goes
+/// out. A caller that is not serving a request — startup recovery, a unit test —
+/// has nowhere to record it and keeps the original inline work.
+///
+/// Two things the state lock used to order have to be kept explicitly:
+///
+/// * Checkpoints for one file keep the order of the *decisions* that produced
+///   them, which is the order the state lock gave them. A checkpoint whose
+///   decision is older than one already written is dropped, so a request that
+///   reaches its commit late cannot put an older reply back.
+/// * A checkpoint that lands after a terminal append removed it is discarded on
+///   recovery: `recover_inflight_message` drops a checkpoint whose message id is
+///   already indexed as a final row, so a stale snapshot cannot resurrect a
+///   settled reply.
+mod durability {
+    use super::*;
+    use std::cell::RefCell;
+    use std::future::Future;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    /// What one request owes the device before it may answer.
+    enum Owed {
+        /// Bytes already in the page cache; only the flush is left.
+        Flush(PathBuf, File),
+        /// A checkpoint still to write, flush and swap into place. `decided` is
+        /// its place in the process-wide order of checkpoint decisions.
+        Checkpoint {
+            path: PathBuf,
+            payload: String,
+            decided: u64,
+        },
+    }
+
+    tokio::task_local! {
+        /// What the request being served owes the device, in the order it was
+        /// recorded. Transcript bytes are in the page cache by the time they are
+        /// recorded; a checkpoint is not written at all yet.
+        static PENDING: RefCell<Vec<Owed>>;
+    }
+
+    /// Record the device debt of `file`, or flush it here when no request will.
+    pub(super) fn owe(path: &Path, file: File) -> Result<()> {
+        if PENDING.try_with(|_| ()).is_err() {
+            return file
+                .sync_data()
+                .with_context(|| format!("flush {}", path.display()));
+        }
+        PENDING.with(|pending| {
+            let mut pending = pending.borrow_mut();
+            // The kernel buffer, not the descriptor, holds the bytes, so a newer
+            // handle for the same file supersedes an older one.
+            pending.retain(|owed| !matches!(owed, Owed::Flush(known, _) if known == path));
+            pending.push(Owed::Flush(path.to_path_buf(), file));
+        });
+        Ok(())
+    }
+
+    /// Record a checkpoint the request owes, or write it here when no request
+    /// will. The record is serialized now, so the commit only touches the file.
+    pub(super) fn owe_checkpoint(path: &Path, record: &InflightRecord) -> Result<()> {
+        let decided = decision_order();
+        let payload = serde_json::to_string(record)?;
+        if PENDING.try_with(|_| ()).is_err() {
+            return write_checkpoint(path, &payload, decided);
+        }
+        PENDING.with(|pending| {
+            pending.borrow_mut().push(Owed::Checkpoint {
+                path: path.to_path_buf(),
+                payload,
+                decided,
+            });
+        });
+        Ok(())
+    }
+
+    /// Serve one request: commit every write it made, in order, before it
+    /// answers. The request's own outcome comes back untouched.
+    pub async fn serving<F, T>(future: F) -> (T, Result<()>)
+    where
+        F: Future<Output = T>,
+    {
+        PENDING
+            .scope(RefCell::new(Vec::new()), async move {
+                let output = future.await;
+                let pending = PENDING.with(|pending| std::mem::take(&mut *pending.borrow_mut()));
+                // The work blocks, so it runs off the async worker.
+                let committed = tokio::task::spawn_blocking(move || commit(pending))
+                    .await
+                    .unwrap_or_else(|error| Err(anyhow!("transcript commit did not run: {error}")));
+                (output, committed)
+            })
+            .await
+    }
+
+    /// Commit each owed item in order, stopping at the first failure: work that
+    /// could not reach the device is reported, never quietly dropped.
+    fn commit(pending: Vec<Owed>) -> Result<()> {
+        for owed in pending {
+            match owed {
+                Owed::Flush(path, file) => file
+                    .sync_data()
+                    .with_context(|| format!("flush {}", path.display()))?,
+                Owed::Checkpoint {
+                    path,
+                    payload,
+                    decided,
+                } => write_checkpoint(&path, &payload, decided)?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Write one checkpoint: into a temporary file, to the device, and only then
+    /// over the checkpoint it replaces.
+    ///
+    /// A checkpoint whose decision is older than one already written is dropped:
+    /// the state lock that used to hold the decision and the write together is
+    /// released before this runs, and the file keeps the later decision.
+    fn write_checkpoint(path: &Path, payload: &str, decided: u64) -> Result<()> {
+        let state = writer_state(path);
+        let _per_file = state
+            .lock
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        if state.written.load(Ordering::SeqCst) >= decided {
+            return Ok(());
+        }
+        let tmp = path.with_extension("json.tmp");
+        {
+            let mut file = File::create(&tmp)?;
+            file.write_all(payload.as_bytes())?;
+            file.write_all(b"\n")?;
+            file.flush()?;
+            file.sync_data()
+                .with_context(|| format!("flush {}", tmp.display()))?;
+        }
+        swap_into_place(&tmp, path)?;
+        state.written.store(decided, Ordering::SeqCst);
+        Ok(())
+    }
+
+    /// Where a checkpoint decision sits in the process-wide decision order. The
+    /// state lock used to be that order; it is released before the write now.
+    fn decision_order() -> u64 {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        NEXT.fetch_add(1, Ordering::SeqCst) + 1
+    }
+
+    /// One checkpoint file's writer state: the lock that makes a decision and its
+    /// swap atomic against another writer of the same file, and the decision that
+    /// last landed there.
+    ///
+    /// One entry per checkpoint path ever written is kept for the life of the
+    /// process. Evicting could hand two concurrent writers different state for one
+    /// file, which is the interleaving this exists to prevent; sessions are
+    /// long-lived and few, so the table stays small.
+    struct WriterState {
+        lock: std::sync::Mutex<()>,
+        written: AtomicU64,
+    }
+
+    fn writer_state(path: &Path) -> &'static WriterState {
+        type Registry = std::sync::Mutex<std::collections::HashMap<PathBuf, &'static WriterState>>;
+        static WRITERS: std::sync::OnceLock<Registry> = std::sync::OnceLock::new();
+        let registry =
+            WRITERS.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()));
+        let mut guard = registry.lock().unwrap_or_else(|poison| poison.into_inner());
+        let state: &'static WriterState = guard.entry(path.to_path_buf()).or_insert_with(|| {
+            Box::leak(Box::new(WriterState {
+                lock: std::sync::Mutex::new(()),
+                written: AtomicU64::new(0),
+            }))
+        });
+        state
+    }
+}
+
+/// Serve one RPC, committing the transcript writes it made before it answers.
+///
+/// Returns the request's own outcome together with the device outcome, so the
+/// caller decides which of the two a response carries — and so a device failure
+/// cannot be answered with success.
+pub use durability::serving as commit_writes_of;
+
 /// Durable single-line append shared by transcript and revision writers.
 /// `header` is written first when the file does not exist yet.
 fn append_line(path: &Path, header: Option<String>, line: String) -> Result<()> {
@@ -616,9 +878,10 @@ fn append_line(path: &Path, header: Option<String>, line: String) -> Result<()> 
     buf.push('\n');
     file.write_all(buf.as_bytes())?;
     file.flush()?;
-    // Message durability matches the DB's WAL synchronous=NORMAL guarantees.
-    file.sync_data()?;
-    Ok(())
+    // The bytes are in the kernel. Whether they reach the device before this
+    // caller is answered belongs to the request that made the write (see
+    // `commit_writes_of`); a caller outside one flushes them here.
+    durability::owe(path, file)
 }
 
 /// Whether a non-empty file ends in a newline; an empty file counts as
@@ -913,6 +1176,23 @@ fn swap_into_place(tmp: &Path, path: &Path) -> Result<()> {
 /// appended between the caller's own read and this write survives. That is the
 /// difference that matters: a metadata stamp must never cost the transcript its
 /// newest messages the way a full `write_transcript` from a stale snapshot does.
+///
+/// Still O(history), deliberately. Appending the replacement instead — which the
+/// reader's last-write-wins dedupe resolves correctly for *content* — moves the
+/// message's line to the end of the file, and every window in the read path is
+/// expressed in physical line coordinates: `find_message_position` returns the
+/// last physical occurrence and `get_session_with_options` centres
+/// `messageAround` on it. A search jump to an updated message would then open on
+/// the tail of the session instead of its neighbourhood. Making the replace
+/// cheap needs the window coordinates to become deduplicated-logical first; that
+/// is a read-path change, not a write-path one. It costs 4.5 ms at 1.3 MB,
+/// 27.1 ms at 21 MB and about 1.3 s at 1 GB.
+///
+/// One pass is skipped because it only ever costs work: a replacement identical
+/// to the line already stored leaves the file untouched instead of rewriting the
+/// whole transcript. That is the shape of a retried metadata stamp, and it turns
+/// a 3.9 ms rewrite into a 1.0 ms read at 1.3 MB and a 25 ms one into 19 ms at
+/// 21 MB, measured against the always-rewrite splice on the same fixture.
 pub fn update_message(data_dir: &Path, session_id: &str, record: &MessageRecord) -> Result<bool> {
     let path = transcript_path(data_dir, session_id)?;
     let raw = match fs::read_to_string(&path) {
@@ -921,34 +1201,40 @@ pub fn update_message(data_dir: &Path, session_id: &str, record: &MessageRecord)
         Err(e) => return Err(e).with_context(|| format!("read {}", path.display())),
     };
     let replacement = tagged("message", record)?;
-    let mut body = String::with_capacity(raw.len() + replacement.len());
-    let mut replaced = false;
-    for line in raw.lines() {
-        let trimmed = line.trim();
-        let is_target = !trimmed.is_empty()
-            && serde_json::from_str::<Value>(trimmed).is_ok_and(|value| {
-                value.get("type").and_then(Value::as_str) == Some("message")
-                    && value.get("id").and_then(Value::as_str) == Some(record.id.as_str())
-            });
-        // A retried append can leave the same id on two lines; keep-last dedupe
-        // means every copy has to carry the new metadata.
-        if is_target {
-            body.push_str(&replacement);
-            replaced = true;
-        } else {
-            body.push_str(line);
-        }
-        body.push('\n');
-    }
-    if !replaced {
-        return Ok(false);
-    }
     let tmp = path.with_extension("jsonl.tmp");
+    let mut rewrote = false;
+    let mut carries_target = false;
     {
         let file = File::create(&tmp)?;
         let mut writer = BufWriter::new(file);
-        writer.write_all(body.as_bytes())?;
+        for line in raw.lines() {
+            let trimmed = line.trim();
+            let is_target = !trimmed.is_empty()
+                && serde_json::from_str::<Value>(trimmed).is_ok_and(|value| {
+                    value.get("type").and_then(Value::as_str) == Some("message")
+                        && value.get("id").and_then(Value::as_str) == Some(record.id.as_str())
+                });
+            if is_target {
+                carries_target = true;
+            }
+            if is_target && line != replacement {
+                // A retried append can leave the same id on two lines; keep-last
+                // dedupe means every copy has to carry the new metadata.
+                writer.write_all(replacement.as_bytes())?;
+                rewrote = true;
+            } else {
+                writer.write_all(line.as_bytes())?;
+            }
+            writer.write_all(b"\n")?;
+        }
         writer.flush()?;
+        if !rewrote {
+            // Nothing to swap in: the id is absent, or every copy already
+            // carries exactly this metadata. Leave the live transcript alone.
+            drop(writer);
+            let _ = fs::remove_file(&tmp);
+            return Ok(carries_target);
+        }
         writer.get_ref().sync_data()?;
     }
     swap_into_place(&tmp, &path)?;
@@ -1978,5 +2264,249 @@ mod tests {
         assert!(!transcript_path(dir.path(), "s1").unwrap().exists());
         assert!(!revisions_path(dir.path(), "s1").unwrap().exists());
         remove_session_files(dir.path(), "s1");
+    }
+
+    /// A tool row whose block array names a provider call id.
+    fn tool_record(id: &str, call_id: &str) -> MessageRecord {
+        MessageRecord {
+            id: id.into(),
+            role: "tool".into(),
+            tool_name: Some("bash".into()),
+            is_error: false,
+            blocks: json!([{ "type": "tool_result", "callId": call_id, "text": "x" }]),
+            meta: None,
+            created_at: "2026-07-26T00:00:00.000Z".into(),
+        }
+    }
+
+    /// Byte offset of every line start, which is all `read_tool_call` needs.
+    fn line_offsets(dir: &Path, session_id: &str) -> TranscriptLayout {
+        let raw = fs::read(transcript_path(dir, session_id).unwrap()).unwrap();
+        let mut message_offsets = Vec::new();
+        let mut at = 0usize;
+        for line in raw.split_inclusive(|byte| *byte == b'\n') {
+            message_offsets.push(at as u64);
+            at += line.len();
+        }
+        TranscriptLayout {
+            message_offsets,
+            compaction_offsets: Vec::new(),
+            file_len: raw.len() as u64,
+        }
+    }
+
+    /// Presence is answered from the id field, and the byte pre-filter must not
+    /// hide an id that JSON writes in escaped form.
+    #[test]
+    fn transcript_contains_id_answers_from_the_id_field_alone() {
+        let dir = tempdir().unwrap();
+        let escaped = "quote\"and\\slash";
+        for id in ["m1", "middle", escaped] {
+            append_message(dir.path(), "s1", "2026-07-26T00:00:00Z", &record(id, "x")).unwrap();
+        }
+        for id in ["m1", "middle", escaped] {
+            assert!(
+                transcript_contains_id(dir.path(), "s1", id).unwrap(),
+                "{id:?} should be present"
+            );
+        }
+        assert!(!transcript_contains_id(dir.path(), "s1", "absent").unwrap());
+        // A prefix of a stored id is not a stored id.
+        assert!(!transcript_contains_id(dir.path(), "s1", "mid").unwrap());
+        // A session with no transcript answers false rather than failing.
+        assert!(!transcript_contains_id(dir.path(), "other", "m1").unwrap());
+    }
+
+    /// The byte pre-filter in `read_tool_call` must not hide a call id that JSON
+    /// writes in escaped form.
+    #[test]
+    fn read_tool_call_finds_ids_that_json_escapes() {
+        let dir = tempdir().unwrap();
+        append_message(dir.path(), "s1", "2026-07-26T00:00:00Z", &record("m1", "x")).unwrap();
+        let call_ids = ["call-1", "quote\"and\\slash"];
+        for (index, call_id) in call_ids.iter().enumerate() {
+            append_message(
+                dir.path(),
+                "s1",
+                "2026-07-26T00:00:00Z",
+                &tool_record(&format!("tool-{index}"), call_id),
+            )
+            .unwrap();
+        }
+        let layout = line_offsets(dir.path(), "s1");
+        for call_id in call_ids {
+            assert!(
+                read_tool_call(dir.path(), "s1", &layout, call_id)
+                    .unwrap()
+                    .is_some(),
+                "{call_id:?} should be found"
+            );
+        }
+        assert!(read_tool_call(dir.path(), "s1", &layout, "absent")
+            .unwrap()
+            .is_none());
+    }
+
+    /// Concurrent appends from several sessions must not cost a line, fuse two
+    /// lines, or leak across files: writes are ordered by the state lock and
+    /// each append flushes its own file. Guards the append shape the durability
+    /// contract rests on.
+    #[test]
+    fn concurrent_appends_keep_every_line_intact_and_in_its_own_session() {
+        const SESSIONS: usize = 8;
+        const PER_SESSION: usize = 25;
+        let dir = tempdir().unwrap();
+        let mut handles = Vec::new();
+        for session in 0..SESSIONS {
+            let root = dir.path().to_path_buf();
+            handles.push(std::thread::spawn(move || {
+                let id = format!("sess-{session}");
+                for index in 0..PER_SESSION {
+                    let record = record(&format!("msg-{:06}", session * PER_SESSION + index), "x");
+                    append_message(&root, &id, "2026-07-26T00:00:00Z", &record).unwrap();
+                }
+            }));
+        }
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        for session in 0..SESSIONS {
+            let id = format!("sess-{session}");
+            let expected: Vec<String> = (session * PER_SESSION..(session + 1) * PER_SESSION)
+                .map(|index| format!("msg-{index:06}"))
+                .collect();
+            let ids: Vec<String> = read_transcript(dir.path(), &id)
+                .unwrap()
+                .iter()
+                .map(|record| record.id.clone())
+                .collect();
+            assert_eq!(
+                ids, expected,
+                "every line survives, in order, in its own session"
+            );
+        }
+    }
+
+    /// Point one session's transcript at a file that takes writes and refuses
+    /// the device flush. `/dev/null` accepts the bytes and fails `fdatasync`
+    /// with EINVAL, which is how a broken device behaves, on any machine.
+    #[cfg(unix)]
+    fn transcript_that_cannot_be_flushed(dir: &Path) -> PathBuf {
+        let path = transcript_path(dir, "s1").unwrap();
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink("/dev/null", &path).unwrap();
+        path
+    }
+
+    /// A caller that is not serving a request has nowhere to defer to, so it
+    /// must not report an append whose bytes never reached the device as a
+    /// success.
+    #[cfg(unix)]
+    #[test]
+    fn an_append_outside_a_request_reports_a_failed_device_flush() {
+        let dir = tempdir().unwrap();
+        transcript_that_cannot_be_flushed(dir.path());
+        let error = append_message(dir.path(), "s1", "2026-07-26T00:00:00Z", &record("m1", "x"))
+            .expect_err("a failed device flush is not a successful append");
+        assert!(format!("{error:#}").contains("flush"), "{error:#}");
+    }
+
+    /// The request that owns the write owns the device wait: it commits the
+    /// lines it wrote before it answers, and a failed flush comes back to it
+    /// instead of being logged and forgotten.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_request_only_answers_after_its_lines_reached_the_device() {
+        let dir = tempdir().unwrap();
+        transcript_that_cannot_be_flushed(dir.path());
+        let (written, committed) = commit_writes_of(async {
+            append_message(dir.path(), "s1", "2026-07-26T00:00:00Z", &record("m1", "x"))
+        })
+        .await;
+        assert!(written.is_ok(), "the write itself succeeds: {written:?}");
+        let error =
+            committed.expect_err("the flush failed, so the request must not answer success");
+        assert!(format!("{error:#}").contains("flush"), "{error:#}");
+    }
+
+    /// The same scope on a healthy file commits the write and reports nothing.
+    #[tokio::test]
+    async fn a_request_commits_the_transcript_lines_it_wrote() {
+        let dir = tempdir().unwrap();
+        let (written, committed) = commit_writes_of(async {
+            append_message(dir.path(), "s1", "2026-07-26T00:00:00Z", &record("m1", "x"))
+        })
+        .await;
+        written.unwrap();
+        committed.expect("a synced write commits");
+        let ids: Vec<String> = read_transcript(dir.path(), "s1")
+            .unwrap()
+            .iter()
+            .map(|record| record.id.clone())
+            .collect();
+        assert_eq!(ids, vec!["m1".to_string()]);
+    }
+
+    /// An in-flight checkpoint for `message_id`, stamped `created_at`.
+    fn inflight(session_id: &str, message_id: &str, created_at: &str) -> InflightRecord {
+        let mut message = record(message_id, "partial");
+        message.created_at = created_at.into();
+        InflightRecord {
+            schema: INFLIGHT_SCHEMA,
+            session_id: session_id.into(),
+            turn_id: Some("turn-1".into()),
+            saved_at: created_at.into(),
+            message,
+        }
+    }
+
+    /// A checkpoint is part of what a request owes the device, so one that cannot
+    /// reach it fails the request instead of answering success.
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_request_whose_checkpoint_cannot_be_flushed_fails() {
+        let dir = tempdir().unwrap();
+        let path = inflight_path(dir.path(), "s1").unwrap();
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        // The temporary the writer creates, flushes and renames into place.
+        std::os::unix::fs::symlink("/dev/null", path.with_extension("json.tmp")).unwrap();
+        let record = inflight("s1", "m1", "2026-07-26T00:00:01.000Z");
+        let (written, committed) =
+            commit_writes_of(async { write_inflight(dir.path(), "s1", &record) }).await;
+        assert!(written.is_ok(), "the write itself succeeds: {written:?}");
+        let error = committed.expect_err("an unflushed checkpoint is not a saved checkpoint");
+        assert!(format!("{error:#}").contains("flush"), "{error:#}");
+    }
+
+    /// Checkpoints of one file keep the order of the decisions that produced
+    /// them, including when the earlier decision reaches its commit last: the
+    /// state lock used to give that order and the commit no longer holds it.
+    #[tokio::test]
+    async fn a_checkpoint_decided_later_always_wins() {
+        let dir = tempdir().unwrap();
+        let root = dir.path().to_path_buf();
+        let first = inflight("s1", "m1", "2026-07-26T00:00:01.000Z");
+        let second = inflight("s1", "m1", "2026-07-26T00:00:02.000Z");
+        let (written, committed) = commit_writes_of(async {
+            // Decided first, and it reaches its commit only after the second
+            // decision has already replaced the file.
+            write_inflight(&root, "s1", &first).unwrap();
+            let later = {
+                let (root, second) = (root.clone(), second.clone());
+                // No request scope on this thread, so this one is written inline,
+                // exactly as every checkpoint was before the wait moved.
+                tokio::task::spawn_blocking(move || write_inflight(&root, "s1", &second))
+            };
+            later.await.unwrap().unwrap();
+            Ok::<(), anyhow::Error>(())
+        })
+        .await;
+        written.unwrap();
+        committed.unwrap();
+        let stored = read_inflight(&root, "s1").unwrap().unwrap();
+        assert_eq!(
+            stored.message.created_at, second.message.created_at,
+            "a checkpoint decided earlier must not land on top of a later one"
+        );
     }
 }

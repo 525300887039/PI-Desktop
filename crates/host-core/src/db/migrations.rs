@@ -10,6 +10,20 @@ impl Database {
             "CREATE INDEX IF NOT EXISTS idx_turns_ended_at ON turns(ended_at DESC)",
             [],
         );
+        // Search ranks every result set by `created_at` and cuts it with a
+        // LIMIT, so the planner needs that column ordered; this is the same
+        // idempotent-addition pattern as `idx_turns_ended_at` above. Both
+        // statements only add an index, so no existing row is rewritten and a
+        // schema-version bump with a migration backup is unnecessary.
+        let _ = self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at DESC)",
+            [],
+        );
+        let _ = self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_messages_session_created
+               ON messages(session_id, created_at DESC, seq DESC, id ASC)",
+            [],
+        );
         let tx = self.conn.unchecked_transaction()?;
         tx.execute(
             "UPDATE turns

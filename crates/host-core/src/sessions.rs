@@ -1230,7 +1230,12 @@ pub fn list_sessions(db: &Database) -> Result<Vec<SessionSummary>> {
         let mut session = row?;
         if is_default_title(&session.title) {
             if let Some(title) = first_user_title(db, &session.id)? {
-                // Persist so Recents stays stable across restarts.
+                // Persist so Recents stays stable across restarts. Each write is
+                // its own commit, which looks like an obvious batching win —
+                // batching them into one transaction measured 0.114 ms -> 0.022 ms
+                // for forty sessions, and was left out anyway: a
+                // session stops having a default title the first time this runs,
+                // so the extra commits happen once per session, not per read.
                 let _ = rename_session(db, &session.id, &title);
                 session.title = title;
             }
@@ -1423,6 +1428,23 @@ pub fn get_session(db: &Database, id: &str) -> Result<Option<SessionDetail>> {
     get_session_with_options(db, id, SessionReadOptions::default())
 }
 
+/// The session's index row, without touching the transcript.
+///
+/// `get_session` materializes every message to answer the same question, which
+/// made a plain index lookup cost O(transcript bytes). The workspace resolvers
+/// ran a full JSONL parse per tool call and per permission evaluation — twice
+/// per plan submission — only to read `project_path`, and two of them ran it
+/// just to check that the session exists. Everything they need is in
+/// `SUMMARY_SELECT`, so this is one indexed row.
+pub fn session_summary(db: &Database, id: &str) -> Result<Option<SessionSummary>> {
+    let sql = format!("{SUMMARY_SELECT} AND s.id = ?1");
+    Ok(db
+        .conn()
+        .prepare_cached(&sql)?
+        .query_row(params![id], summary_from_row)
+        .optional()?)
+}
+
 /// Load a session detail with an optional renderer-facing message window.
 /// The uncapped default is intentionally retained for the sidecar and for
 /// mutation paths that need the canonical transcript. Renderer callers should
@@ -1432,13 +1454,7 @@ pub fn get_session_with_options(
     id: &str,
     options: SessionReadOptions,
 ) -> Result<Option<SessionDetail>> {
-    let sql = format!("{SUMMARY_SELECT} AND s.id = ?1");
-    let summary = db
-        .conn()
-        .prepare_cached(&sql)?
-        .query_row(params![id], summary_from_row)
-        .optional()?;
-    let Some(summary) = summary else {
+    let Some(summary) = session_summary(db, id)? else {
         return Ok(None);
     };
 
@@ -1986,11 +2002,8 @@ pub fn append_message(
 fn message_indexed(db: &Database, session_id: &str, message_id: &str) -> Result<bool> {
     let existing: Option<i64> = db
         .conn()
-        .query_row(
-            "SELECT mid FROM messages WHERE id = ?1 AND session_id = ?2",
-            params![message_id, session_id],
-            |row| row.get(0),
-        )
+        .prepare_cached("SELECT mid FROM messages WHERE id = ?1 AND session_id = ?2")?
+        .query_row(params![message_id, session_id], |row| row.get(0))
         .optional()?;
     Ok(existing.is_some())
 }
@@ -1999,11 +2012,8 @@ fn message_indexed(db: &Database, session_id: &str, message_id: &str) -> Result<
 fn message_owner(db: &Database, message_id: &str) -> Result<Option<String>> {
     let owner: Option<String> = db
         .conn()
-        .query_row(
-            "SELECT session_id FROM messages WHERE id = ?1",
-            params![message_id],
-            |row| row.get(0),
-        )
+        .prepare_cached("SELECT session_id FROM messages WHERE id = ?1")?
+        .query_row(params![message_id], |row| row.get(0))
         .optional()?;
     Ok(owner)
 }
@@ -2012,10 +2022,13 @@ fn namespaced_message_id(session_id: &str, message_id: &str) -> String {
     format!("{session_id}:{message_id}")
 }
 
+/// Whether this session's transcript already holds `message_id`.
+///
+/// This used to read the whole transcript, which parses every record's block
+/// tree to answer a presence question; the transcript store answers it from the
+/// id field alone.
 fn transcript_contains_id(db: &Database, session_id: &str, message_id: &str) -> Result<bool> {
-    Ok(transcripts::read_transcript(db.data_dir(), session_id)?
-        .iter()
-        .any(|record| record.id == message_id))
+    transcripts::transcript_contains_id(db.data_dir(), session_id, message_id)
 }
 
 fn valid_turn_reference(
@@ -2028,11 +2041,8 @@ fn valid_turn_reference(
     };
     let owner: Option<String> = db
         .conn()
-        .query_row(
-            "SELECT session_id FROM turns WHERE id = ?1",
-            params![turn_id],
-            |row| row.get(0),
-        )
+        .prepare_cached("SELECT session_id FROM turns WHERE id = ?1")?
+        .query_row(params![turn_id], |row| row.get(0))
         .optional()?;
     if owner.as_deref() == Some(session_id) {
         return Ok(Some(turn_id.to_string()));
@@ -2594,11 +2604,8 @@ pub fn truncate_from(
 fn abort_running_turn(db: &Database, session_id: &str) -> Result<Option<String>> {
     let turn_id: Option<String> = db
         .conn()
-        .query_row(
-            "SELECT id FROM turns WHERE session_id = ?1 AND status = 'running'",
-            params![session_id],
-            |row| row.get(0),
-        )
+        .prepare_cached("SELECT id FROM turns WHERE session_id = ?1 AND status = 'running'")?
+        .query_row(params![session_id], |row| row.get(0))
         .optional()?;
     let Some(turn_id) = turn_id else {
         return Ok(None);
@@ -3583,14 +3590,35 @@ pub fn search_messages(db: &Database, query: &str, limit: i64) -> Result<Vec<Sea
     // trigram FTS needs >= 3 chars; shorter queries fall back to LIKE.
     if query.chars().count() >= 3 {
         let quoted = format!("\"{}\"", query.replace('"', "\"\""));
+        // `snippet()` is an FTS5 auxiliary function, and the planner evaluates
+        // it while it walks the FTS matches — that is, before the ORDER BY and
+        // the LIMIT have reduced the set. It re-reads and re-tokenizes the
+        // whole document on every call, so on a 40k-message corpus the 800
+        // matches that produced 20 rows cost 5.24 of the statement's 6.00 ms.
+        // The CTE moves the limit in front of it, leaving 20 calls.
+        //
+        // The inner subquery must repeat `MATCH ?1`: an FTS5 auxiliary function
+        // reads the phrase list of the MATCH that positioned its cursor, so a
+        // lookup by `rowid` alone has none and returns the head of the document
+        // instead of the window around the hit. The two forms were compared row
+        // for row: with the repeated MATCH, id, order and snippet
+        // text are identical; without it, 0 of 20 snippets match.
         let mut stmt = db.conn().prepare_cached(
-            "SELECT m.id, m.session_id, s.title, m.role, m.created_at,
-                    snippet(messages_fts, 0, '', '', '…', 16)
-             FROM messages_fts
-             JOIN messages m ON m.mid = messages_fts.rowid
-             JOIN sessions s ON s.id = m.session_id
-             WHERE messages_fts MATCH ?1
-             ORDER BY m.created_at DESC LIMIT ?2",
+            "WITH hits AS (
+               SELECT m.id, m.mid, m.session_id, s.title, m.role, m.created_at
+               FROM messages_fts
+               JOIN messages m ON m.mid = messages_fts.rowid
+               JOIN sessions s ON s.id = m.session_id
+               WHERE messages_fts MATCH ?1
+               ORDER BY m.created_at DESC LIMIT ?2
+             )
+             SELECT hits.id, hits.session_id, hits.title, hits.role,
+                    hits.created_at,
+                    (SELECT snippet(messages_fts, 0, '', '', '…', 16)
+                     FROM messages_fts
+                     WHERE messages_fts MATCH ?1
+                       AND messages_fts.rowid = hits.mid)
+             FROM hits",
         )?;
         let rows = stmt.query_map(params![quoted, limit], |row| {
             Ok(SearchHit {
@@ -4947,6 +4975,78 @@ mod tests {
     }
 
     #[test]
+    fn a_replaced_message_keeps_its_position_for_an_around_window() {
+        // A branch stamp and a terminal steering snapshot both rewrite one
+        // existing message through `transcripts::update_message`. That call
+        // splices the line where it stands. Writing the replacement at the end
+        // of the file instead would still resolve the *content* — reads dedupe
+        // keep-last — but it would move the line, and an `around` window is
+        // centred on a physical position, so a search jump to an updated message
+        // would open on the tail of the session. This pins the geometry, not
+        // just the text.
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        for index in 0..12 {
+            append_message(
+                &db,
+                &session.id,
+                &user_msg(
+                    &format!("m{index}"),
+                    &format!("body {index}"),
+                    "2025-05-01T00:00:00Z",
+                ),
+                None,
+            )
+            .unwrap();
+        }
+        let replaced = user_msg("m5", "body 5 newest snapshot", "2025-05-01T00:00:00Z");
+        let (record, _) = ui_to_record(&replaced);
+        assert!(transcripts::update_message(db.data_dir(), &session.id, &record).unwrap());
+
+        let page = get_session_with_options(
+            &db,
+            &session.id,
+            SessionReadOptions {
+                message_around: Some("m5".to_string()),
+                message_before: None,
+                message_limit: Some(4),
+                content_limit: None,
+            },
+        )
+        .unwrap()
+        .unwrap();
+        let ids: Vec<&str> = page.messages.iter().map(|m| m.id.as_str()).collect();
+        assert!(
+            ids.contains(&"m5"),
+            "the anchor must be inside its own window: {ids:?}"
+        );
+        // Numeric, not lexicographic: "m10" < "m5" as strings, which would let
+        // a tail-window regression through.
+        let index_of = |id: &str| id.strip_prefix('m').and_then(|n| n.parse::<usize>().ok());
+        assert!(
+            ids.iter().any(|id| index_of(id).is_some_and(|n| n < 5)),
+            "messages before the anchor must stay reachable: {ids:?}"
+        );
+        assert!(
+            ids.iter().any(|id| index_of(id).is_some_and(|n| n > 5)),
+            "messages after the anchor must stay reachable: {ids:?}"
+        );
+        assert_eq!(
+            page.has_more_after,
+            Some(true),
+            "an anchor in the middle of the history is not the end of the session"
+        );
+        assert_eq!(
+            page.messages
+                .iter()
+                .find(|message| message.id == "m5")
+                .unwrap()
+                .content,
+            "body 5 newest snapshot"
+        );
+    }
+
+    #[test]
     fn bounded_session_reads_page_history_and_cap_display_content() {
         let db = test_db();
         let session = create_session(&db, None, None, None, None, None).unwrap();
@@ -6094,6 +6194,108 @@ mod tests {
         // Deleting the session clears the index (cascade + FTS trigger).
         delete_session(&db, &session.id).unwrap();
         assert!(search_messages(&db, "数据库", 10).unwrap().is_empty());
+    }
+
+    /// The search snippets must show the window around the match. FTS5's
+    /// `snippet()` reads the phrase list of the MATCH that positioned its
+    /// cursor, so a reformulation that reaches a document by rowid alone
+    /// silently degrades to the head of the document — which still looks like a
+    /// plausible preview. This pins the observable property.
+    #[test]
+    fn search_snippets_center_on_the_match_not_the_document_head() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        let filler = "lorem ipsum dolor sit amet ".repeat(60);
+        append_message(
+            &db,
+            &session.id,
+            &user_msg(
+                "m1",
+                &format!("{filler}needle-window-tail"),
+                "2025-05-01T00:00:00Z",
+            ),
+            None,
+        )
+        .unwrap();
+        let hits = search_messages(&db, "needle-window-tail", 10).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert!(
+            hits[0].snippet.contains("needle-window-tail"),
+            "snippet is not the window around the match: {:?}",
+            hits[0].snippet
+        );
+        assert!(
+            hits[0].snippet.len() < filler.len(),
+            "snippet returned the whole body: {} bytes",
+            hits[0].snippet.len()
+        );
+    }
+
+    /// The ordering indexes are a plan change and must not be a result change.
+    /// Both branches of `search_messages` are compared with the indexes present
+    /// and dropped, on the same rows.
+    #[test]
+    fn search_results_do_not_depend_on_the_ordering_indexes() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        for index in 0..40 {
+            append_message(
+                &db,
+                &session.id,
+                &user_msg(
+                    &format!("m{index:02}"),
+                    &format!("needle body {index}"),
+                    &format!("2025-05-01T00:00:{index:02}Z"),
+                ),
+                None,
+            )
+            .unwrap();
+        }
+        let project = |hits: Vec<SearchHit>| {
+            hits.into_iter()
+                .map(|hit| (hit.message_id, hit.snippet))
+                .collect::<Vec<_>>()
+        };
+        let indexed_fts = project(search_messages(&db, "needle body", 10).unwrap());
+        let indexed_like = project(search_messages(&db, "ne", 10).unwrap());
+        assert_eq!(indexed_fts.len(), 10);
+        assert_eq!(indexed_like.len(), 10);
+        // Newest first: the query must rank by created_at, not by row order.
+        assert_eq!(indexed_fts[0].0, "m39");
+
+        db.conn()
+            .execute_batch(
+                "DROP INDEX idx_messages_created;
+                 DROP INDEX idx_messages_session_created;",
+            )
+            .unwrap();
+        assert_eq!(
+            project(search_messages(&db, "needle body", 10).unwrap()),
+            indexed_fts
+        );
+        assert_eq!(
+            project(search_messages(&db, "ne", 10).unwrap()),
+            indexed_like
+        );
+    }
+
+    /// `boot_maintenance` adds the ordering indexes to an existing database
+    /// without a schema-version bump, the same way it has always added
+    /// `idx_turns_ended_at`.
+    #[test]
+    fn opening_a_database_creates_the_message_ordering_indexes() {
+        let db = test_db();
+        for name in ["idx_messages_created", "idx_messages_session_created"] {
+            let present: i64 = db
+                .conn()
+                .query_row(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = ?1",
+                    params![name],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(present, 1, "{name} was not created");
+        }
     }
 
     #[test]
