@@ -24,7 +24,7 @@
 //! their session, never by an age or orphan sweep.
 
 use std::fs::{self, File, OpenOptions};
-use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{anyhow, Context, Result};
@@ -1195,12 +1195,30 @@ fn swap_into_place(tmp: &Path, path: &Path) -> Result<()> {
 /// 21 MB, measured against the always-rewrite splice on the same fixture.
 pub fn update_message(data_dir: &Path, session_id: &str, record: &MessageRecord) -> Result<bool> {
     let path = transcript_path(data_dir, session_id)?;
+    let replacement = tagged("message", record)?;
+    // Fast path. A message is decided by the *last* occurrence of its id, so
+    // when that occurrence is already the file's last line, appending the
+    // replacement is indistinguishable from replacing it in place: same id, same
+    // new content, same position at the end of the file. It replaces the
+    // whole-file rewrite below, which measured 4.5 ms at 1.3 MB and 27 ms at
+    // 21 MB — about 1.3 s at 1 GB by the same arithmetic — and that rewrite, not
+    // the device, is what bounds a reply in a session holding hundreds of MB.
+    if let Some(last) = read_last_line(&path)? {
+        if last != replacement && line_carries(&last, &record.id) {
+            append_line(&path, None, replacement)?;
+            return Ok(true);
+        }
+    }
+    // The rewrite below moves line contents, so the cached line offsets are stale
+    // from here on. The append above only grew the file, which the incremental
+    // layout refresh handles by itself — and dropping that invalidation is what
+    // keeps the next read of a long session from scanning all of it again.
+    crate::sessions::invalidate_transcript_layout(session_id);
     let raw = match fs::read_to_string(&path) {
         Ok(raw) => raw,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(false),
         Err(e) => return Err(e).with_context(|| format!("read {}", path.display())),
     };
-    let replacement = tagged("message", record)?;
     let tmp = path.with_extension("jsonl.tmp");
     let mut rewrote = false;
     let mut carries_target = false;
@@ -1239,6 +1257,56 @@ pub fn update_message(data_dir: &Path, session_id: &str, record: &MessageRecord)
     }
     swap_into_place(&tmp, &path)?;
     Ok(true)
+}
+
+/// The file's last line, if it can be read on its own. `None` means the file is
+/// empty, ends without a record, or its last line is longer than the window this
+/// reads — the caller then has to read the whole file.
+///
+/// Reading the last line instead of the whole transcript is what keeps an update
+/// on a long session O(1): the transcript of a session that has been running for
+/// months holds hundreds of MB, and every updated message used to be answered by
+/// copying all of it.
+fn read_last_line(path: &Path) -> Result<Option<String>> {
+    const WINDOW: u64 = 64 * 1024;
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(e).with_context(|| format!("read {}", path.display())),
+    };
+    let len = file.metadata()?.len();
+    if len == 0 {
+        return Ok(None);
+    }
+    let from = len.saturating_sub(WINDOW);
+    file.seek(SeekFrom::Start(from))?;
+    let mut buf = vec![0u8; (len - from) as usize];
+    file.read_exact(&mut buf)?;
+    // A line boundary is ASCII, so everything after the last newline in the
+    // window is a whole line even when the window itself split a character.
+    let (start, end) = match buf.iter().rposition(|byte| *byte == b'\n') {
+        Some(nl) if nl + 1 < buf.len() => (nl + 1, buf.len()),
+        Some(nl) => match buf[..nl].iter().rposition(|byte| *byte == b'\n') {
+            Some(previous) => (previous + 1, nl),
+            None if from == 0 => (0, nl),
+            None => return Ok(None),
+        },
+        None => return Ok(None),
+    };
+    match std::str::from_utf8(&buf[start..end]) {
+        Ok(line) if line.trim().is_empty() => Ok(None),
+        Ok(line) => Ok(Some(line.to_string())),
+        // The window started inside a record: that line reaches back further.
+        Err(_) => Ok(None),
+    }
+}
+
+/// Whether one transcript line is a `message` record carrying `id`.
+fn line_carries(line: &str, id: &str) -> bool {
+    serde_json::from_str::<Value>(line.trim()).is_ok_and(|value| {
+        value.get("type").and_then(Value::as_str) == Some("message")
+            && value.get("id").and_then(Value::as_str) == Some(id)
+    })
 }
 
 /// Append one archived branch. The file is append-only: the active revision

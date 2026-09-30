@@ -1921,7 +1921,6 @@ pub fn append_message(
             && message.status.as_deref() != Some("streaming")
             && streaming_assistant_indexed(db, session_id, &record.id)?
         {
-            invalidate_transcript_layout(session_id);
             if !transcripts::update_message(db.data_dir(), session_id, &record)? {
                 return Err(anyhow!(
                     "streaming assistant is missing from its transcript"

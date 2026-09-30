@@ -215,6 +215,7 @@ CREATE TRIGGER messages_au AFTER UPDATE OF text ON messages
 -- before it can emit the first row (`USE TEMP B-TREE FOR ORDER BY`): the
 -- uncapped LIKE branch measured 30.2 ms to return 20 of 40k matches. This lets
 -- the planner walk the newest rows and stop at the limit instead.
+CREATE INDEX idx_messages_id ON messages(id, session_id);
 CREATE INDEX idx_messages_created ON messages(created_at DESC);
 -- The per-session snippet lookup inside `session_search::search` sorts within
 -- one session. `id` is the final term because the reading ORDER BY is
