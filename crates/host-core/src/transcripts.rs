@@ -971,21 +971,53 @@ pub fn read_transcript_window_with_layout(
         .map(|limit| start.saturating_add(limit).min(total))
         .unwrap_or(total);
 
+    // Compaction lines are merged in full only for a read with no message window:
+    // the model context needs the whole chain, while a renderer window needs the
+    // divider that is in force at it and the dividers inside it.
+    //
+    // "The chain is small" was the assumption here, and a real 406 MB session
+    // falsified it: 44 compactions, 2.0 MB. A window that asked for one message
+    // returned 2014 KB, of which 2012 KB was that chain -- parsed and
+    // re-serialized per window read, 85-103 ms of the read path, for one message.
+    let active_compactions: Vec<u64> = if message_limit.is_some() {
+        let mut picked = Vec::new();
+        if let Some(&window_start) = layout.message_offsets.get(start) {
+            if let Some(active) = layout
+                .compaction_offsets
+                .iter()
+                .copied()
+                .filter(|offset| *offset < window_start)
+                .next_back()
+            {
+                picked.push(active);
+            }
+            let window_end = layout
+                .message_offsets
+                .get(end.saturating_sub(1))
+                .copied()
+                .unwrap_or(window_start);
+            picked.extend(
+                layout
+                    .compaction_offsets
+                    .iter()
+                    .copied()
+                    .filter(|offset| *offset >= window_start && *offset <= window_end),
+            );
+        }
+        picked
+    } else {
+        layout.compaction_offsets.clone()
+    };
     // Every offset that has to be visited, in ascending file order, so one
     // forward-only reader can serve both kinds without seeking backwards.
     let mut wanted: Vec<(u64, bool)> =
-        Vec::with_capacity(end.saturating_sub(start) + layout.compaction_offsets.len());
+        Vec::with_capacity(end.saturating_sub(start) + active_compactions.len());
     wanted.extend(
         layout.message_offsets[start..end]
             .iter()
             .map(|offset| (*offset, true)),
     );
-    wanted.extend(
-        layout
-            .compaction_offsets
-            .iter()
-            .map(|offset| (*offset, false)),
-    );
+    wanted.extend(active_compactions.iter().map(|offset| (*offset, false)));
     if wanted.is_empty() {
         return Ok(out);
     }
