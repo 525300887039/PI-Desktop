@@ -987,8 +987,9 @@ pub(crate) fn insert_index_row(
 ) -> Result<()> {
     let mut stmt = conn.prepare_cached(
         "INSERT INTO messages (
-            id, session_id, turn_id, seq, role, tool_name, is_error, text, created_at
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            id, session_id, turn_id, seq, role, tool_name, is_error, text, created_at,
+            streaming
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
     )?;
     stmt.execute(params![
         record.id,
@@ -1000,8 +1001,25 @@ pub(crate) fn insert_index_row(
         record.is_error,
         text,
         ts_to_ms(&record.created_at),
+        i64::from(record_is_streaming(record)),
     ])?;
     Ok(())
+}
+
+/// Whether a record's own metadata marks it as a provisional, streaming
+/// assistant row.
+///
+/// The index stores this answer so the write path can ask "is this message still
+/// streaming?" with one indexed lookup. The transcript remains the source of
+/// truth: a rebuild recomputes the column from the file.
+fn record_is_streaming(record: &MessageRecord) -> bool {
+    record.role == "assistant"
+        && record
+            .meta
+            .as_ref()
+            .and_then(|meta| meta.get("status"))
+            .and_then(Value::as_str)
+            == Some("streaming")
 }
 
 fn recovered_session_title(records: &[MessageRecord]) -> String {
@@ -1921,15 +1939,25 @@ pub fn append_message(
             && message.status.as_deref() != Some("streaming")
             && streaming_assistant_indexed(db, session_id, &record.id)?
         {
-            if !transcripts::update_message(db.data_dir(), session_id, &record)? {
-                return Err(anyhow!(
-                    "streaming assistant is missing from its transcript"
-                ));
+            let stamped = "UPDATE messages SET text = ?3, is_error = ?4, streaming = 0
+                 WHERE session_id = ?1 AND id = ?2";
+            if transcripts::update_message(db.data_dir(), session_id, &record)? {
+                db.conn().execute(
+                    stamped,
+                    params![session_id, record.id, text, record.is_error],
+                )?;
+            } else {
+                // The index knows this id but the transcript does not. A device
+                // that lost a provisional row's bytes leaves exactly this shape,
+                // and the caller is delivering the settled row for it: appending
+                // keeps the file the source of truth instead of failing a reply
+                // whose only other copy is the checkpoint.
+                transcripts::append_message(db.data_dir(), session_id, &session_created, &record)?;
+                db.conn().execute(
+                    stamped,
+                    params![session_id, record.id, text, record.is_error],
+                )?;
             }
-            db.conn().execute(
-                "UPDATE messages SET text = ?3, is_error = ?4 WHERE session_id = ?1 AND id = ?2",
-                params![session_id, record.id, text, record.is_error],
-            )?;
         } else {
             return Ok(());
         }
@@ -2137,7 +2165,44 @@ fn rebuild_session_message_index(
     Ok(())
 }
 
+/// Whether the last copy of `message_id` is a provisional, streaming assistant
+/// row.
+///
+/// The index row mirrors that copy: it is inserted with the row, the append that
+/// lands the terminal snapshot re-stamps it, and an index rebuild recomputes it
+/// from the transcript. So this is one indexed lookup instead of a backwards walk
+/// over the transcript's message lines, 64 lines per window — the shape that cost
+/// 46 ms on a 104 MB transcript once the target sat 512 lines from the tail, and
+/// a read of every byte of the file when it sat further, twice per turn.
+///
+/// A NULL row is a message written before the column existed; those still answer
+/// from the transcript, which is why an unrebuilt database behaves exactly as it
+/// did before the cache. No row at all means the id has no index entry, which
+/// agrees with the transcript's own "the id is not in the file" answer.
 fn streaming_assistant_indexed(db: &Database, session_id: &str, message_id: &str) -> Result<bool> {
+    let indexed: Option<(String, Option<i64>)> = db
+        .conn()
+        .prepare_cached("SELECT role, streaming FROM messages WHERE id = ?1 AND session_id = ?2")?
+        .query_row(params![message_id, session_id], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
+        .optional()?;
+    match indexed {
+        Some((role, Some(streaming))) => Ok(role == "assistant" && streaming != 0),
+        Some((_, None)) => streaming_assistant_in_transcript(db, session_id, message_id),
+        None => Ok(false),
+    }
+}
+
+/// The same question answered from the transcript: walk backwards from the tail
+/// 64 message lines at a time and stop at the last copy of the id. This is the
+/// fallback for a message the index cannot answer for, which is a row written
+/// before the cached column existed.
+fn streaming_assistant_in_transcript(
+    db: &Database,
+    session_id: &str,
+    message_id: &str,
+) -> Result<bool> {
     let layout = session_layout(db, session_id)?;
     let mut end = layout.message_count();
     while end > 0 {
@@ -2155,13 +2220,7 @@ fn streaming_assistant_indexed(db: &Database, session_id: &str, message_id: &str
             .rev()
             .find(|record| record.id == message_id)
         {
-            return Ok(record.role == "assistant"
-                && record
-                    .meta
-                    .as_ref()
-                    .and_then(|meta| meta.get("status"))
-                    .and_then(Value::as_str)
-                    == Some("streaming"));
+            return Ok(record_is_streaming(record));
         }
         end = start;
     }
@@ -2266,10 +2325,26 @@ pub fn recover_inflight_message(
             return Ok(None);
         }
     };
+    // The file decides here, not the index. A device that lost a settled row's
+    // bytes can leave the index claiming the reply is finished while the
+    // transcript still holds the provisional row -- and that provisional row is
+    // what makes the checkpoint the durable copy of the reply. An index row whose
+    // transcript row is gone counts as provisional too, because the checkpoint is
+    // then the only copy left.
     let indexed = message_indexed(db, session_id, &inflight.message.id)?;
-    if indexed && !streaming_assistant_indexed(db, session_id, &inflight.message.id)? {
+    let provisional = streaming_assistant_in_transcript(db, session_id, &inflight.message.id)?
+        || (indexed && streaming_assistant_indexed(db, session_id, &inflight.message.id)?);
+    if indexed && !provisional {
         transcripts::remove_inflight(db.data_dir(), session_id)?;
         return Ok(None);
+    }
+    if indexed && provisional {
+        // Line the cache up with the file before the promotion below, which asks
+        // the index whether this id is still the provisional row.
+        db.conn().execute(
+            "UPDATE messages SET streaming = 1 WHERE session_id = ?1 AND id = ?2",
+            params![session_id, inflight.message.id],
+        )?;
     }
     // A leftover checkpoint whose final row never landed is the durable
     // reply. Boot skips `completed` turns so the outbox can still append the
@@ -7113,6 +7188,322 @@ mod tests {
         message.status = Some("streaming".into());
         message.thinking = Some("still thinking".into());
         message
+    }
+
+    fn streaming_flag(db: &Database, id: &str) -> Option<i64> {
+        db.conn()
+            .query_row(
+                "SELECT streaming FROM messages WHERE id = ?1",
+                params![id],
+                |row| row.get(0),
+            )
+            .unwrap()
+    }
+
+    fn messages_have_streaming_column(db: &Database) -> bool {
+        db.conn()
+            .query_row(
+                "SELECT EXISTS(
+                   SELECT 1 FROM pragma_table_info('messages') WHERE name = 'streaming'
+                 )",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap()
+    }
+
+    /// Randomized differential check of the one fact this change caches. A
+    /// session is driven through provisional appends, settled snapshots, retried
+    /// duplicates of the same id and checkpoint recovery, and after every step the
+    /// index's `streaming` bit and the guard's answer have to agree with the
+    /// transcript itself.
+    #[test]
+    fn the_streaming_bit_matches_the_transcript_under_random_appends() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        let mut seed = 0x2545_F491_4F6C_DD1Du64;
+        let mut next = move || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for step in 0..80 {
+            let id = format!("m{}", next() % 6);
+            let mut message = user_msg(&id, &format!("body {step}"), "2025-05-01T00:00:00Z");
+            message.role = if next() % 4 == 0 {
+                "user".into()
+            } else {
+                "assistant".into()
+            };
+            if message.role == "assistant" {
+                message.status = Some(
+                    if next() % 2 == 0 {
+                        "streaming"
+                    } else {
+                        "complete"
+                    }
+                    .into(),
+                );
+            }
+            let appended = append_message(&db, &session.id, &message, None);
+            assert!(
+                !format!("{appended:?}").contains("missing from its transcript"),
+                "step {step}: the settled row could not reach the transcript: {appended:?}"
+            );
+            if next() % 3 == 0 {
+                let _ = save_inflight_message(&db, &session.id, None, &message);
+            }
+            if next() % 7 == 0 {
+                let _ = recover_inflight_message(&db, &session.id, next() % 2 == 0);
+            }
+            let records =
+                dedupe_records(transcripts::read_transcript(db.data_dir(), &session.id).unwrap());
+            for record in &records {
+                assert_eq!(
+                    streaming_flag(&db, &record.id),
+                    Some(i64::from(record_is_streaming(record))),
+                    "step {step}: the index disagrees with the transcript for {}",
+                    record.id
+                );
+                assert_eq!(
+                    streaming_assistant_indexed(&db, &session.id, &record.id).unwrap(),
+                    record_is_streaming(record),
+                    "step {step}: the guard disagrees with the transcript for {}",
+                    record.id
+                );
+            }
+        }
+    }
+
+    /// The guard reads the index, not the transcript: a live streaming row keeps
+    /// its checkpoint even when the transcript file is gone.
+    #[test]
+    fn the_streaming_guard_answers_from_the_index_not_from_the_transcript() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        append_message(
+            &db,
+            &session.id,
+            &streaming_assistant("a1", "partial"),
+            None,
+        )
+        .unwrap();
+        let transcript = transcripts::transcript_path(db.data_dir(), &session.id).unwrap();
+        assert!(transcript.exists());
+        std::fs::remove_file(&transcript).unwrap();
+
+        assert!(save_inflight_message(
+            &db,
+            &session.id,
+            None,
+            &streaming_assistant("a1", "partial")
+        )
+        .unwrap());
+        assert!(transcripts::inflight_path(db.data_dir(), &session.id)
+            .unwrap()
+            .exists());
+    }
+
+    /// The mirror image: a row the index cannot answer for is resolved from the
+    /// transcript, which is what makes an unrebuilt database behave exactly as it
+    /// did before the cache existed. Clearing the column *and* deleting the file
+    /// makes the two sources disagree, so the answer says which one was read.
+    #[test]
+    fn a_message_written_before_the_streaming_column_answers_from_the_transcript() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        append_message(
+            &db,
+            &session.id,
+            &streaming_assistant("a1", "partial"),
+            None,
+        )
+        .unwrap();
+        db.conn()
+            .execute("UPDATE messages SET streaming = NULL WHERE id = 'a1'", [])
+            .unwrap();
+
+        // The transcript has the streaming row, and the fallback finds it.
+        assert!(save_inflight_message(
+            &db,
+            &session.id,
+            None,
+            &streaming_assistant("a1", "partial")
+        )
+        .unwrap());
+
+        // Now only the column could answer "streaming"; the file cannot. The
+        // checkpoint is dropped, so the file is the source that answered.
+        let transcript = transcripts::transcript_path(db.data_dir(), &session.id).unwrap();
+        std::fs::remove_file(&transcript).unwrap();
+        assert!(!save_inflight_message(
+            &db,
+            &session.id,
+            None,
+            &streaming_assistant("a1", "partial")
+        )
+        .unwrap());
+        assert!(!transcripts::inflight_path(db.data_dir(), &session.id)
+            .unwrap()
+            .exists());
+    }
+
+    /// The column is a cache of the transcript's last copy, so landing a terminal
+    /// snapshot has to re-stamp it. A stale row would keep answering "still
+    /// streaming", refuse the terminal row and lose the reply.
+    #[test]
+    fn the_streaming_column_tracks_the_last_copy_of_a_message() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        let settled = |id: &str, text: &str| {
+            let mut message = streaming_assistant(id, text);
+            message.status = Some("complete".into());
+            message
+        };
+
+        append_message(
+            &db,
+            &session.id,
+            &streaming_assistant("a1", "partial"),
+            None,
+        )
+        .unwrap();
+        assert_eq!(streaming_flag(&db, "a1"), Some(1));
+        append_message(
+            &db,
+            &session.id,
+            &settled("a1", "partial and complete"),
+            None,
+        )
+        .unwrap();
+        assert_eq!(streaming_flag(&db, "a1"), Some(0));
+        append_message(&db, &session.id, &streaming_assistant("a2", "second"), None).unwrap();
+        assert_eq!(streaming_flag(&db, "a2"), Some(1));
+
+        // Every row agrees with the transcript's own last copy of its id.
+        let records =
+            dedupe_records(transcripts::read_transcript(db.data_dir(), &session.id).unwrap());
+        assert_eq!(records.len(), 2);
+        for record in records {
+            assert_eq!(
+                streaming_flag(&db, &record.id),
+                Some(i64::from(record_is_streaming(&record))),
+                "the index disagrees with the transcript for {}",
+                record.id
+            );
+        }
+    }
+
+    /// The column arrives through boot maintenance, not a versioned migration: no
+    /// row is rewritten and no backup is taken, so a database that predates it
+    /// keeps working and simply answers from the transcript until its rows are
+    /// rewritten by an append.
+    #[test]
+    fn opening_a_database_adds_the_streaming_column() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pi.sqlite");
+        let db = Database::open(&path).unwrap();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        append_message(
+            &db,
+            &session.id,
+            &streaming_assistant("a1", "partial"),
+            None,
+        )
+        .unwrap();
+        assert!(messages_have_streaming_column(&db));
+        db.conn()
+            .execute_batch("ALTER TABLE messages DROP COLUMN streaming")
+            .unwrap();
+        drop(db);
+
+        let db = Database::open(&path).unwrap();
+        assert!(messages_have_streaming_column(&db));
+        assert_eq!(streaming_flag(&db, "a1"), None);
+        assert!(save_inflight_message(
+            &db,
+            &session.id,
+            None,
+            &streaming_assistant("a1", "partial")
+        )
+        .unwrap());
+    }
+    /// A device that lost a settled row's bytes leaves the index claiming the
+    /// reply is finished while the transcript still ends on the provisional row.
+    /// The checkpoint is then the durable copy, so recovery has to promote it —
+    /// and re-stamp the index — instead of dropping it as a settled duplicate.
+    #[test]
+    fn a_settled_index_row_over_a_provisional_transcript_row_still_recovers() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        append_message(
+            &db,
+            &session.id,
+            &streaming_assistant("a1", "partial"),
+            None,
+        )
+        .unwrap();
+        assert!(save_inflight_message(
+            &db,
+            &session.id,
+            None,
+            &streaming_assistant("a1", "partial reply")
+        )
+        .unwrap());
+        // The crash window: the index was re-stamped, the row's bytes never were.
+        db.conn()
+            .execute("UPDATE messages SET streaming = 0 WHERE id = 'a1'", [])
+            .unwrap();
+
+        let recovered = recover_inflight_messages(&db, false).unwrap();
+        assert_eq!(recovered.len(), 1, "the reply was dropped as a duplicate");
+        assert_eq!(recovered[0].1.content, "partial reply");
+        assert_eq!(streaming_flag(&db, "a1"), Some(0));
+        let records =
+            dedupe_records(transcripts::read_transcript(db.data_dir(), &session.id).unwrap());
+        assert_eq!(records.len(), 1);
+        assert_eq!(
+            record_index_text(&records[0]).as_deref(),
+            Some("partial reply")
+        );
+    }
+
+    /// The mirror window: the transcript lost the provisional row while the index
+    /// kept it. The checkpoint is again the only copy, and the promotion has to
+    /// append the row back instead of failing because the file does not have it.
+    #[test]
+    fn a_reply_whose_transcript_row_was_lost_is_appended_back_on_recovery() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        append_message(
+            &db,
+            &session.id,
+            &streaming_assistant("a1", "partial"),
+            None,
+        )
+        .unwrap();
+        assert!(save_inflight_message(
+            &db,
+            &session.id,
+            None,
+            &streaming_assistant("a1", "partial reply")
+        )
+        .unwrap());
+        // The transcript lost the row's bytes; only the index still has it.
+        let transcript = transcripts::transcript_path(db.data_dir(), &session.id).unwrap();
+        std::fs::write(&transcript, "").unwrap();
+
+        let recovered = recover_inflight_messages(&db, false).unwrap();
+        assert_eq!(recovered.len(), 1);
+        assert_eq!(streaming_flag(&db, "a1"), Some(0));
+        let records =
+            dedupe_records(transcripts::read_transcript(db.data_dir(), &session.id).unwrap());
+        assert_eq!(records.len(), 1, "the promoted row never reached the file");
+        assert_eq!(
+            record_index_text(&records[0]).as_deref(),
+            Some("partial reply")
+        );
     }
 
     #[test]

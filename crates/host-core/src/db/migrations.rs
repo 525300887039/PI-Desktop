@@ -25,15 +25,30 @@ impl Database {
             [],
         );
 
-        // The write path looks a message up by its globally unique id on every
-        // append and every checkpoint. Without this index that lookup walks every
-        // row of the session (`UNIQUE (session_id, seq)` is the only one that
-        // covers `session_id`), which is what made a 100k-message session take
-        // seconds per turn.
-        let _ = self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_messages_id ON messages(id, session_id)",
+        // The write path asks one question about a message over and over: does
+        // the last copy of this id still sit in the transcript as a provisional,
+        // streaming assistant row? The index row already mirrors that copy — it
+        // is inserted with the row and re-stamped whenever the transcript line
+        // is replaced — so the answer belongs in a column instead of in a
+        // backwards walk over every message line of a session that can hold
+        // gigabytes, 64 lines at a time, twice per turn.
+        //
+        // NULL means "written before this column existed". The read falls back to
+        // the transcript there, so an existing database answers exactly as it did
+        // before until a row is rewritten by an append. That is what makes the
+        // column safe to add without a schema-version bump: it carries no default
+        // and carries no index, so no row is rewritten and no migration backup is
+        // needed — the same idempotent-addition pattern as the indexes above.
+        let has_streaming: bool = self.conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM pragma_table_info('messages') WHERE name = 'streaming')",
             [],
-        );
+            |row| row.get(0),
+        )?;
+        if !has_streaming {
+            let _ = self
+                .conn
+                .execute_batch("ALTER TABLE messages ADD COLUMN streaming INTEGER");
+        }
         let tx = self.conn.unchecked_transaction()?;
         tx.execute(
             "UPDATE turns
