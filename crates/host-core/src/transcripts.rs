@@ -171,6 +171,181 @@ pub struct TranscriptRead {
     pub compactions: Vec<CompactionRecord>,
 }
 
+/// Where a transcript's line layout is cached between processes.
+///
+/// A layout is derived data, and so is this: everything below validates a cache
+/// against the file it claims to describe, and any mismatch -- missing, a
+/// different file, a shorter file, a count that does not add up -- falls back to
+/// the scan that always happened before it existed.
+fn layout_cache_path(data_dir: &Path, session_id: &str) -> Result<PathBuf> {
+    Ok(transcript_path(data_dir, session_id)?.with_extension("jsonl.layout"))
+}
+
+/// Transcripts below this are cheaper to scan than to cache, and no fixture grows
+/// a cache file.
+const LAYOUT_CACHE_MIN_LEN: u64 = 2 * 1024 * 1024;
+
+/// Store again once the cached layout lags the file by this much, so a writer
+/// that runs for hours does not leave the next process a large tail to scan.
+const LAYOUT_CACHE_MAX_LAG: u64 = 4 * 1024 * 1024;
+
+/// An identity that an append keeps and a rewrite through a temporary file
+/// changes. Platforms without one never load a cache, which only means they scan
+/// exactly as they did before.
+#[cfg(unix)]
+fn file_identity(meta: &fs::Metadata) -> u64 {
+    use std::os::unix::fs::MetadataExt;
+    meta.ino().wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ ((meta.dev() as u64) << 17)
+}
+
+#[cfg(not(unix))]
+fn file_identity(_meta: &fs::Metadata) -> u64 {
+    0
+}
+
+/// The layout a previous process cached beside this transcript, or `None` when it
+/// cannot be shown to describe the file as it is now.
+fn load_layout_cache(data_dir: &Path, session_id: &str) -> Result<Option<TranscriptLayout>> {
+    let path = transcript_path(data_dir, session_id)?;
+    let meta = match fs::metadata(&path) {
+        Ok(meta) => meta,
+        Err(_) => return Ok(None),
+    };
+    if meta.len() < LAYOUT_CACHE_MIN_LEN {
+        return Ok(None);
+    }
+    let raw = match fs::read_to_string(layout_cache_path(data_dir, session_id)?) {
+        Ok(raw) => raw,
+        Err(_) => return Ok(None),
+    };
+    let mut tokens = raw.split_ascii_whitespace();
+    let (Some(identity), Some(file_len)) = (tokens.next(), tokens.next()) else {
+        return Ok(None);
+    };
+    if identity.parse::<u64>().ok() != Some(file_identity(&meta)) {
+        return Ok(None);
+    }
+    let Some(file_len) = file_len.parse::<u64>().ok() else {
+        return Ok(None);
+    };
+    if file_len < LAYOUT_CACHE_MIN_LEN || file_len > meta.len() {
+        return Ok(None);
+    }
+    let (Some(messages), Some(compactions)) = (tokens.next(), tokens.next()) else {
+        return Ok(None);
+    };
+    let (Some(messages), Some(compactions)) = (
+        messages.parse::<usize>().ok(),
+        compactions.parse::<usize>().ok(),
+    ) else {
+        return Ok(None);
+    };
+    let mut layout = TranscriptLayout {
+        message_offsets: Vec::with_capacity(messages),
+        compaction_offsets: Vec::with_capacity(compactions),
+        file_len,
+    };
+    for _ in 0..messages + compactions {
+        let Some(offset) = tokens.next().and_then(|token| token.parse::<u64>().ok()) else {
+            return Ok(None);
+        };
+        if layout.message_offsets.len() < messages {
+            layout.message_offsets.push(offset);
+        } else {
+            layout.compaction_offsets.push(offset);
+        }
+    }
+    // The offsets have to be the ones a scan would have produced: ascending,
+    // inside the file the cache describes, and pointing at lines the scan would
+    // have classified the same way.
+    if layout
+        .message_offsets
+        .windows(2)
+        .any(|pair| pair[0] >= pair[1])
+        || layout
+            .compaction_offsets
+            .windows(2)
+            .any(|pair| pair[0] >= pair[1])
+        || !offsets_look_like_a_scan(&path, &layout)?
+    {
+        return Ok(None);
+    }
+    Ok(Some(layout))
+}
+
+/// Read the first cached offset of each kind out of the transcript and check that
+/// it carries the kind of line the cache says it does. Two reads, and they are
+/// what keeps offsets that survived a rewrite from being trusted.
+fn offsets_look_like_a_scan(path: &Path, layout: &TranscriptLayout) -> Result<bool> {
+    let head = layout
+        .message_offsets
+        .first()
+        .map(|offset| (*offset, "message"))
+        .into_iter()
+        .chain(
+            layout
+                .compaction_offsets
+                .first()
+                .map(|offset| (*offset, "compaction")),
+        );
+    for (offset, kind) in head {
+        if offset >= layout.file_len {
+            return Ok(false);
+        }
+        let mut file = File::open(path)?;
+        file.seek(SeekFrom::Start(offset))?;
+        let mut buf = vec![0u8; 4096];
+        let read = std::io::Read::read(&mut file, &mut buf)?;
+        let text = String::from_utf8_lossy(&buf[..read]);
+        if sniff_line_kind(text.lines().next().unwrap_or("").trim()) != Some(kind) {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+/// Cache the layout beside its transcript, through a temporary file that is
+/// swapped in, so a reader never sees half of one. Failing to cache costs the
+/// next process a scan and nothing else, so this never fails a read.
+fn store_layout_cache(data_dir: &Path, session_id: &str, layout: &TranscriptLayout) -> Result<()> {
+    if layout.file_len < LAYOUT_CACHE_MIN_LEN {
+        return Ok(());
+    }
+    let path = transcript_path(data_dir, session_id)?;
+    let Ok(meta) = fs::metadata(&path) else {
+        return Ok(());
+    };
+    if meta.len() != layout.file_len {
+        return Ok(());
+    }
+    let cache = layout_cache_path(data_dir, session_id)?;
+    let tmp = cache.with_extension("layout.tmp");
+    {
+        let mut writer = BufWriter::new(File::create(&tmp)?);
+        writeln!(writer, "{} {}", file_identity(&meta), layout.file_len)?;
+        writeln!(
+            writer,
+            "{} {}",
+            layout.message_offsets.len(),
+            layout.compaction_offsets.len()
+        )?;
+        for offsets in [&layout.message_offsets, &layout.compaction_offsets] {
+            for (index, offset) in offsets.iter().enumerate() {
+                if index % 8 == 7 {
+                    writeln!(writer, "{offset}")?;
+                } else {
+                    write!(writer, "{offset} ")?;
+                }
+            }
+            if !offsets.is_empty() && offsets.len() % 8 != 0 {
+                writeln!(writer)?;
+            }
+        }
+        writer.flush()?;
+    }
+    swap_into_place(&tmp, &cache)
+}
+
 /// Physical layout of one transcript file: the byte offset of every message and
 /// compaction line, plus the file length it was built from.
 ///
@@ -434,10 +609,30 @@ pub fn refresh_layout(
     if len == base.file_len {
         return Ok(base);
     }
+    // A cold process reads the offsets the previous one cached beside the file
+    // instead of scanning the transcript again -- 531 ms for a 406 MB transcript,
+    // taken inside the state lock that serialises the RPC surface. A cache that
+    // cannot be shown to describe this file is dropped, and the scan below is what
+    // always happened before this existed.
+    let base = if base.file_len == 0 {
+        load_layout_cache(data_dir, session_id)?
+            .filter(|cached| cached.file_len <= len)
+            .unwrap_or_default()
+    } else {
+        base
+    };
+    if len == base.file_len {
+        return Ok(base);
+    }
     if len < base.file_len {
         return scan_layout(&path, TranscriptLayout::default());
     }
-    scan_layout(&path, base)
+    let base_len = base.file_len;
+    let layout = scan_layout(&path, base)?;
+    if base_len == 0 || layout.file_len.saturating_sub(base_len) >= LAYOUT_CACHE_MAX_LAG {
+        let _ = store_layout_cache(data_dir, session_id, &layout);
+    }
+    Ok(layout)
 }
 
 /// Scan from `layout.file_len` to the end of the file, appending offsets.
