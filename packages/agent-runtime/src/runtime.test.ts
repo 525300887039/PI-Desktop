@@ -7143,6 +7143,49 @@ describe("DesktopAgentRuntime subagents", () => {
     expect(host.call).toHaveBeenCalledTimes(1);
   });
 
+  it("guides empty override catalogs to model opt-in without blocking default delegation (#1043)", async () => {
+    const host = { call: vi.fn().mockRejectedValue(new Error("not enabled for delegation")) };
+    const runtime = createRuntime({ subagents: [explorer], subagentModelKeys: [], host });
+    subagentRuns.calls.length = 0;
+    subagentRuns.deferred = false;
+    subagentRuns.result = undefined;
+    const tool = taskTool(runtime);
+    const denied = await tool.execute("empty-override", {
+      agent: "explorer", task: "Search.", model: "guessed/model",
+    });
+    for (const guidance of [
+      denied.details.error, tool.description, (runtime as any).agent.state.systemPrompt,
+    ]) {
+      expect(guidance).toContain("Settings → Models");
+      expect(guidance).toContain("Advanced");
+      expect(guidance).toContain("Available for AI delegation");
+      expect(guidance).toContain("save");
+      expect(guidance).toContain("Omit");
+    }
+    expect(denied.details.error).toContain("not available for delegation");
+    expect(subagentRuns.calls).toHaveLength(0);
+    const inherited = await tool.execute("inherit-after-denial", { agent: "explorer", task: "Search." });
+    expect(inherited.details.error).toBeUndefined();
+    expect(subagentRuns.calls).toHaveLength(1);
+    expect(subagentRuns.calls[0].provider).toBe(provider);
+    await runtime.dispose();
+  });
+
+  it("lists exact authorized keys instead of empty-catalog guidance for an invalid override (#1043)", async () => {
+    const runtime = createRuntime({
+      subagents: [explorer],
+      subagentProviders: { "allowed/selected-model": provider },
+      subagentModelKeys: ["allowed/selected-model"],
+      host: { call: vi.fn().mockRejectedValue(new Error("not enabled for delegation")) },
+    });
+    const denied = await taskTool(runtime).execute("unknown-override", {
+      agent: "explorer", task: "Search.", model: "guessed/model",
+    });
+    expect(denied.details.error).toContain("Available: allowed/selected-model.");
+    expect(denied.details.error).not.toContain("Settings → Models");
+    await runtime.dispose();
+  });
+
   it("allows an opted-in model to override a definition pin without changing D278", async () => {
     const pinnedProvider = { ...provider, modelId: "remote-model", modelConfig: undefined };
     const selected = { ...provider, modelId: "selected-model", modelConfig: undefined };

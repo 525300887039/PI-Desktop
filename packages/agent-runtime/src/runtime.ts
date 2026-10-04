@@ -492,6 +492,10 @@ export const ASK_TOOL_NAME = "asktool";
  * be re-read by id without re-running it.
  */
 const MAX_RETAINED_DELEGATIONS = 100;
+const DELEGATION_MODEL_OPT_IN_GUIDANCE =
+  'To authorize a model override, open Settings → Models, edit the service or account, expand its model Advanced settings, enable "Available for AI delegation", and save. Use an exact key from the delegation catalog; never guess a provider/model key.';
+const DELEGATION_DEFAULT_MODEL_GUIDANCE =
+  "Omit the `model` parameter on Task to use the definition's default model, or inherit the parent conversation's selected model when no default is pinned. Repeating the definition's own Default model key is the same as omitting `model`.";
 /**
  * `TaskWait` blocks the turn, and the model picks the timeout, so the ceiling
  * is what bounds how long a session can look hung with no way to intervene.
@@ -4139,8 +4143,8 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
     if (keys.length === 0) {
       return [
         "No delegation model overrides are configured.",
-        "Omit the `model` parameter on Task to use the definition's default model, or inherit the parent conversation's selected model when no default is pinned.",
-        "Repeating a definition's own Default model key is the same as omitting `model`. Never invent a provider/model key.",
+        DELEGATION_DEFAULT_MODEL_GUIDANCE,
+        DELEGATION_MODEL_OPT_IN_GUIDANCE,
       ].join(" ");
     }
     const lines: string[] = [
@@ -4402,7 +4406,7 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
               "Only pass `model` when deliberately overriding the definition default with a listed delegation model; otherwise omit it. Repeating the definition's own Default model key, or the exact parent provider/model, is the same as omitting `model`.",
             ]
           : [
-              "No delegation model overrides are configured. Omit `model` to use the definition's default, or the parent model when no default is pinned. Repeating a definition's own Default model key is the same as omitting `model`; never invent a provider/model key.",
+              `No delegation model overrides are configured. ${DELEGATION_DEFAULT_MODEL_GUIDANCE} ${DELEGATION_MODEL_OPT_IN_GUIDANCE}`,
             ]),
         "`task` is the delegate's only instruction. It cannot see this conversation, and you cannot correct it while it runs, so state the goal, the paths and facts it cannot infer, and exactly what to report back.",
         "To run delegates concurrently, emit several Task calls in one assistant message. A message that mixes Task with any other tool runs one call at a time. You may keep working or talk to the user while they run; the runtime delivers their reports when they finish. Call TaskStop only to cancel.",
@@ -4504,7 +4508,7 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
             const available = this.availableSubagentModelKeys();
             const hint = available.length
               ? ` Available: ${available.join(", ")}.`
-              : " No models are configured for delegation.";
+              : ` No delegation model overrides are configured. ${DELEGATION_DEFAULT_MODEL_GUIDANCE} ${DELEGATION_MODEL_OPT_IN_GUIDANCE}`;
             return this.subagentToolError(
               toolCallId,
               `Model "${modelOverride}" is not available for delegation.${hint}`,
