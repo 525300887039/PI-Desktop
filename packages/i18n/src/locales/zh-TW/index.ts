@@ -570,6 +570,15 @@ export const zhTW = {
     renameSave: "儲存",
     renameSaving: "儲存中…",
   },
+  planHistory: {
+    pending: "待審批",
+    approved: "已批准",
+    rejected: "已拒絕",
+    expired: "已過期",
+    interrupted: "已中斷",
+    unknown: "狀態無法取得",
+    superseded: "已被新版本取代",
+  },
   plan: {
     planning: "正在規劃",
     approvalRegion: "規劃審批",

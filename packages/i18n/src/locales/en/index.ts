@@ -578,6 +578,15 @@ export const en = {
     renameSave: "Save",
     renameSaving: "Saving…",
   },
+  planHistory: {
+    pending: "Awaiting approval",
+    approved: "Approved",
+    rejected: "Rejected",
+    expired: "Expired",
+    interrupted: "Interrupted",
+    unknown: "Status unavailable",
+    superseded: "Superseded",
+  },
   plan: {
     planning: "Planning",
     approvalRegion: "Plan approval",

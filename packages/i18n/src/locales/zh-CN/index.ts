@@ -570,6 +570,15 @@ export const zhCN = {
     renameSave: "保存",
     renameSaving: "保存中…",
   },
+  planHistory: {
+    pending: "待审批",
+    approved: "已批准",
+    rejected: "已拒绝",
+    expired: "已过期",
+    interrupted: "已中断",
+    unknown: "状态不可用",
+    superseded: "已被新版本替代",
+  },
   plan: {
     planning: "正在规划",
     approvalRegion: "规划审批",

@@ -566,6 +566,15 @@ export const es = {
     "renameSave": "Guardar",
     "renameSaving": "Guardando…"
   },
+  planHistory: {
+    pending: "Pendiente de aprobación",
+    approved: "Aprobado",
+    rejected: "Rechazado",
+    expired: "Caducado",
+    interrupted: "Interrumpido",
+    unknown: "Estado no disponible",
+    superseded: "Sustituido",
+  },
   "plan": {
     "planning": "Planificación",
     "approvalRegion": "Aprobación del plan",
