@@ -498,8 +498,8 @@
 
 ### E2E-PROVIDER-adaptive-thinking-protocol
 
-- **Preconditions:** Isolated provider settings fixture with an Anthropic
-  Messages provider, `claude-opus-5-5`, a legacy Claude model, and a
+- **Preconditions:** Isolated provider settings fixture with a non-OAuth
+  Anthropic Messages provider, `claude-opus-5-5`, a legacy Claude model, and a
   Claude-named relay id whose generic model config has no protocol or
   reasoning-options metadata;
   no live credentials.

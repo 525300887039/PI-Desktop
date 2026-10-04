@@ -523,6 +523,16 @@ describe("Anthropic adaptive thinking from models.dev reasoning options", () => 
     expect(request?.thinking).toHaveProperty("budget_tokens");
   });
 
+  it("keeps the legacy default for live-only OAuth Claude ids", async () => {
+    const provider = genericAnthropicProvider("claude-sonnet-99");
+    provider.authKind = "oauth";
+    provider.vendorKey = "github-copilot";
+    const request = await thinkingRequest(provider);
+
+    expect(request?.thinking).toMatchObject({ type: "enabled" });
+    expect(request?.thinking).toHaveProperty("budget_tokens");
+  });
+
   it("honors an explicit legacy protocol on a generic Claude model", async () => {
     const request = await thinkingRequest(
       genericAnthropicProvider("claude-relay-model", {

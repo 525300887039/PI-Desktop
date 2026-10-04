@@ -125,10 +125,11 @@ models.dev record publishes a reasoning `effort` option and no
 reject `thinking.type=enabled` with HTTP 400, and the model's published
 reasoning options determine that wire shape.
 Models that still publish `budget_tokens`, including those that also publish
-`effort`, keep budget thinking by default. A reasoning-enabled generic model
-config with no `thinkingProtocol` or reasoning options also defaults to
-adaptive thinking when its id contains `claude` and the wire API is Anthropic
-Messages; this covers unpublished Claude relay ids whose metadata is missing.
+`effort`, keep budget thinking by default. A reasoning-enabled non-OAuth
+generic model config with no `thinkingProtocol` or reasoning options
+also defaults to adaptive thinking when its id contains `claude` and the wire
+API is Anthropic Messages; this covers unpublished Claude relay ids whose
+metadata is missing. Live-only OAuth vendor rows keep their existing fallback.
 An explicit `ModelBinding.thinkingProtocol` selection (`legacy` or `adaptive`)
 takes priority, followed by an explicit per-model
 `compat.forceAdaptiveThinking` value, then catalog metadata or the Claude-id

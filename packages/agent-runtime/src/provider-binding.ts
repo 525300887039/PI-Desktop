@@ -350,10 +350,11 @@ export function buildProviderModel(
   const autoAdaptiveThinking =
     catalogModel.thinkingProtocol === undefined && requiresAdaptiveThinking(catalogModel);
   // A generic model projection can still be present when the catalog misses a
-  // model (#926). With no protocol or reasoning options, a Claude id on the
-  // Anthropic wire is the remaining signal for adaptive thinking.
+  // model (#926). OAuth vendor rows may expose live-only Claude ids, so only
+  // use the id heuristic for non-OAuth rows without protocol or options.
   const customClaudeId =
     catalog?.source === "generic" &&
+    provider.authKind !== "oauth" &&
     catalogModel.reasoning === true &&
     catalogModel.thinkingProtocol === undefined &&
     (catalogModel.reasoningOptions?.length ?? 0) === 0 &&
