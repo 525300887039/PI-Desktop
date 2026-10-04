@@ -7916,7 +7916,7 @@ describe("DesktopAgentRuntime subagents", () => {
     await runtime.dispose();
   });
 
-  it("aborts leftover delegates on parent rate-limit exhaustion so the session can continue", async () => {
+  it("keeps interrupted delegates resumable after parent rate-limit exhaustion", async () => {
     const onEvent = vi.fn();
     const runtime = createRuntime({ subagents: [explorer], onEvent });
     subagentRuns.calls.length = 0;
@@ -7971,9 +7971,12 @@ describe("DesktopAgentRuntime subagents", () => {
 
     await vi.waitFor(() => {
       expect((runtime as any).delegations.get(delegationId).status).toBe(
-        "aborted",
+        "failed",
       );
     });
+    expect((runtime as any).delegationChains.resolveResume({
+      resume: delegationId, agentName: "explorer", runningDelegationIds: new Set(),
+    }).ok).toBe(true);
 
     const prompt = vi.fn(async () => undefined);
     (runtime as any).agent.prompt = prompt;
@@ -8564,6 +8567,78 @@ describe("DesktopAgentRuntime subagents", () => {
       };
     }
 
+    it("resumes both delegates interrupted by parent failure with their own history", async () => {
+      const runtime = createRuntime({ subagents: [explorer] });
+      const internals = runtime as any;
+      subagentRuns.calls.length = 0;
+      subagentRuns.instances.length = 0;
+      subagentRuns.result = undefined;
+      subagentRuns.deferred = true;
+      try {
+        const ids: string[] = [];
+        for (let index = 0; index < 2; index++) {
+          const callId = `original-${index}`;
+          const started = await startTask(runtime, callId, { agent: "explorer", task: `Task ${index}` });
+          ids.push((started.details as any).delegationId);
+          subagentRuns.calls[index].onEvent(delegateEnvelope(callId, { type: "message_end", message: {
+            id: `child-${index}`, role: "assistant", content: `Finding ${index}`,
+            createdAt: "2026-10-04T00:00:00.000Z", status: "complete",
+          } }));
+        }
+        internals.terminateParentTurn();
+        await vi.waitFor(() => {
+          expect(ids.map((id) => internals.delegations.get(id).status)).toEqual(["failed", "failed"]);
+        });
+        expect(internals.runningDelegations()).toHaveLength(0);
+        for (const id of ids) {
+          expect(internals.delegations.get(id).result).toMatchObject({ status: "failed",
+            error: { code: "SUBAGENT_PARENT_FAILED", resumeId: id } });
+        }
+        internals.agent.prompt = vi.fn(async () => undefined);
+        internals.agent.waitForIdle = vi.fn(async () => undefined);
+        await runtime.prompt("Continue the failed delegates");
+        subagentRuns.deferred = false;
+        for (let index = 0; index < 2; index++) {
+          const result = await startTask(runtime, `resumed-${index}`, {
+            agent: "explorer", task: "Continue", resume: ids[index],
+          });
+          expect((result.details as any).resumedFrom).toBe(ids[index]);
+          const context = JSON.stringify(subagentRuns.calls.at(-1).initialMessages);
+          expect(context).toContain(`Finding ${index}`);
+          expect(context).not.toContain(`Finding ${1 - index}`);
+        }
+      } finally {
+        subagentRuns.deferred = false;
+        await runtime.dispose();
+      }
+    });
+
+    it.each(["abort", "TaskStop"])("explicit %s wins over a pending parent-error interruption", async (action) => {
+      const runtime = createRuntime({ subagents: [explorer] });
+      const internals = runtime as any;
+      subagentRuns.calls.length = 0;
+      subagentRuns.instances.length = 0;
+      subagentRuns.deferred = true;
+      subagentRuns.ignoreAbort = true;
+      try {
+        const started = await startTask(runtime, "original", { agent: "explorer", task: "Find it" });
+        const id = (started.details as any).delegationId;
+        internals.terminateParentTurn();
+        const cancelled = action === "abort" ? runtime.abort() : internals.agent.state.tools
+          .find((tool: any) => tool.name === "TaskStop").execute("stop", { delegationIds: [id] });
+        subagentRuns.resolveRun?.({ agentName: "explorer", status: "aborted", report: "Aborted",
+          turns: 1, toolCalls: 0 });
+        await cancelled;
+        await vi.waitFor(() => expect(internals.delegations.get(id).status).toBe(action === "abort" ? "aborted" : "stopped"));
+        expect(internals.delegationChains.resolveResume({ resume: id, agentName: "explorer",
+          runningDelegationIds: new Set() }).ok).toBe(false);
+      } finally {
+        subagentRuns.ignoreAbort = false;
+        subagentRuns.deferred = false;
+        await runtime.dispose();
+      }
+    });
+
     it("records a delegate's reads in-session so the same session can resume them", async () => {
       const runtime = createRuntime({ subagents: [explorer] });
       const internals = runtime as any;
@@ -8687,9 +8762,10 @@ describe("DesktopAgentRuntime subagents", () => {
       await runtime.dispose();
     });
 
-    it("resumes a chain a restart rebuilt from a completed Task row", async () => {
+    it.each(["completed", "failed"])("resumes a chain a restart rebuilt from a %s Task row", async (status) => {
       const history: UiMessage[] = [
-        restartedTaskRow("task-1", "del-1", { status: "completed" }),
+        restartedTaskRow("task-1", "del-1", { status,
+          ...(status === "failed" ? { error: { code: "SUBAGENT_PARENT_FAILED" } } : {}) }),
         delegateRow("child-1", "task-1"),
       ];
       const runtime = createRuntime({ subagents: [explorer], history });

@@ -9337,3 +9337,20 @@ the latest destination. These assertions measure work counts, not device FPS.
 校验和 npm 两个安装阶段都必须使用该安装，同时保留应用自身的 `PATH`，且不探测 shell 启动文件。
 显式选择的 npm 仍优先使用其所在目录。缺少安装时仍返回 `npm-unavailable` 并保留原生选择器恢复路径。
 可执行集成 fixture 使用真实隔离子进程，并检查仅注册表安装和凭据隔离。
+
+
+#### E2E-CHAT-subagent-parent-error-resume
+
+- **前置条件**：编译后的运行时与本地 provider 模拟服务；使用真实 Agent、SDK 传输、
+  Task/TaskStop 和委托历史，仅模拟 Host Read 边界。
+- **步骤**：启动两个委托，各自完成一次 Read，再让两条 provider 流保持活动。
+  使父级请求失败；在后续提示中恢复两个 id，并检查恢复请求。分别重复用户 Stop
+  和 TaskStop 场景。
+- **预期**：父级失败后会话回到空闲；两个委托以 failed 和 SUBAGENT_PARENT_FAILED
+  结算，并各自带着原来的 Read 上下文恢复。显式 Stop/TaskStop 产生 aborted/stopped；
+  两个恢复请求均被拒绝，不再启动委托。不会自动重启。
+- **关联规格**：03-runtime/02-agent-runtime.md §5f；ADR 0279。
+- **验收**：C、E、Quality。**里程碑**：维护。
+- **状态**：通过 `node scripts/e2e-subagent-parent-error.mjs` 自动验证无头运行时与
+  provider 集成；不使用真实账户或桌面数据。运行时测试另行覆盖父级 429 耗尽与
+  Stop 和结算之间的竞态。
