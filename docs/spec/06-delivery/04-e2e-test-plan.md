@@ -6125,13 +6125,16 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   Separately stream a 256-fragment single turn and a 256-tool activity group;
   update a nested child through the real read-only subagent dock, stream the
   giant group's final thinking item, and deliver actual `tool_update` partials
-  to a running tool in the middle of that group.
+  to a running tool in the middle of that group. Append three tool starts to the
+  loaded 10,784-row session and switch away and back.
 - **Expected**: Ordinary warmed deltas read zero unchanged bodies; unchanged
   groups do not rerender. Mounted history stays bounded despite full canonical
   input. Background updates never replace the foreground, and revalidation never
   discards its cached live tail. Content, minimap previews, disclosure choice,
   reader scroll ownership, completed Copy text and terminal identity remain
   correct. Changed tools/children/thinking still reach their real components.
+  Structural tool appends read zero unchanged completed bodies and survive session
+  reselection; immutable text facts are also reused for delegate answers.
 - **Specs linked**: `04-ux/08-component-spec.md` §7.6.
 - **Acceptance**: C (chat stream), Quality. **Milestone**: M5 maintenance.
 - **Status**: Automated fixture in `scripts/e2e/transcript-long-history.tsx`,

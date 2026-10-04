@@ -1668,6 +1668,8 @@ storage but compose into one assistant turn until the next user message.
   normal 100-row page and deliberately loaded full histories, and to foreground
   and background session caches. Shallow array copies
   remain permitted; cold loads and structural changes may rebuild the projection.
+  Structural appends reuse cached content facts for unchanged immutable messages,
+  including delegate answers, instead of rereading and trimming completed text.
 - Completed rows and unchanged parts within a large active turn/activity group
   retain their render boundaries. Deferred presentation consumes one immutable
   projection snapshot. Older-row and child updates, terminal re-keying, Copy,
