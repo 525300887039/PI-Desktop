@@ -1031,6 +1031,19 @@ identify the platform validation still needed.
 - **Milestone**: M2
 - **Status**: Unit-covered host migration; manual UI journey
 
+#### E2E-MODELS-list-layout: Model lists remain browsable in constrained windows
+
+- **Preconditions:** 60 discovered and configured models; isolated Electron
+  fixture with real provider/account dialogs, hooks and production styles.
+- **Steps:** Open both dialog types at 850×600, 850×850, 1000×560, 1200×700
+  and 1600×1000 content sizes. Scroll each list to its last and first model.
+- **Expected:** Every list displays at least one complete row. Both endpoints
+  are fully visible inside the list, dialog body and viewport. Narrow panes
+  stack; short wide windows keep the side-by-side layout.
+- **Command:** `pnpm test:e2e:provider-model-layout`
+- **Boundary:** Model-discovery IPC is a fixture; no real credentials or host
+  persistence are involved. React, browser layout and scrolling are real.
+
 #### E2E-005K: Preserve explicit extended thinking levels on the wire
 
 - **Preconditions**: A provider has a selected model binding with reasoning
