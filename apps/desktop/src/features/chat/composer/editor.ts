@@ -287,6 +287,7 @@ function buildChipElement(
   removeLabel: string,
   onRemove: (token: string) => void,
   onExpandText: (token: string) => void,
+  onOpenImage: (token: string) => void,
 ): HTMLElement {
   const chip = document.createElement("span");
   chip.className = "composer-chip";
@@ -296,13 +297,19 @@ function buildChipElement(
   const origin = isPluginMark(reference) ? (reference.plugin?.pluginId ?? "") : reference.path;
   if (isPluginMark(reference)) chip.dataset.pluginMark = reference.plugin?.kind;
   chip.title = origin;
-  const editableText = isEditableTextReference(reference);
-  const activate = editableText ? () => onExpandText(token) : undefined;
+  // An image keeps the compact chip and opens its preview; only plain text
+  // references expand into editable draft text.
+  const image = chipIconKey(reference) === "image";
+  if (image) chip.dataset.image = "";
+  const editableText = !image && isEditableTextReference(reference);
+  const activate = editableText ? () => onExpandText(token) : image ? () => onOpenImage(token) : undefined;
   chip.setAttribute("role", activate ? "button" : "listitem");
   chip.setAttribute("aria-label", `${reference.name} — ${origin}`);
   if (activate) {
     chip.tabIndex = 0;
-    chip.dataset.action = "expand-text-reference";
+    // Only a text reference expands into editable text; an image chip opens
+    // its preview instead.
+    chip.dataset.action = editableText ? "expand-text-reference" : "open-image-preview";
     chip.addEventListener("click", activate);
     chip.addEventListener("keydown", (event) => {
       if (event.target !== chip) return;
@@ -350,6 +357,7 @@ export function paintEditorValue(
   removeLabelFor: (reference: ComposerFileReference) => string,
   onRemove: (token: string) => void,
   onExpandText: (token: string) => void,
+  onOpenImage: (token: string) => void,
 ): void {
   el.replaceChildren();
   let textBuffer = "";
@@ -371,6 +379,7 @@ export function paintEditorValue(
             removeLabelFor(reference),
             onRemove,
             onExpandText,
+            onOpenImage,
           ),
         );
         continue;
