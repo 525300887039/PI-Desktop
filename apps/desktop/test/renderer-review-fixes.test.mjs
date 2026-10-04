@@ -71,12 +71,15 @@ test("a chip inside a message reads at that message's own type scale", () => {
   const start = messages.indexOf(".message-row .composer-chip {");
   assert.notEqual(start, -1, "message chip type rule is missing");
   const block = messages.slice(start, messages.indexOf("}", start));
-  // The composer's compact 11.5px/20px chip is a draft-only box; in a message
-  // the chip borrows the face, size and leading around it.
+  // The composer's fixed 11.5px/20px chip is a draft-only box. In a message the
+  // tile is sized by the inherited leading and sits on the line, so the label
+  // reads on the message's own baseline instead of poking out of a 20px tile.
   assert.match(block, /font: inherit;/);
   assert.match(block, /height: auto;/);
   assert.match(block, /line-height: inherit;/);
+  assert.match(block, /vertical-align: top;/);
   assert.doesNotMatch(block, /--text-xs-plus/);
+  assert.doesNotMatch(block, /height: 20px/);
 });
 
 test("dead components are gone", () => {

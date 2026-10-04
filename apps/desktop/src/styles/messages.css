@@ -51,15 +51,17 @@
 }
 
 /* A chip inside a message belongs to that message: it borrows the message's own
-   face, size and leading and only keeps the tile surface. The composer's
-   compact 11.5px/20px metric is a draft-only box. */
+   face, size and leading and only keeps the tile surface. The composer's fixed
+   11.5px/20px box is a draft-only metric, and as a message chip it clipped the
+   message's own line box. Sized by the inherited leading and aligned to the
+   line, the tile covers exactly one line of message text, so the label sits on
+   that line's baseline and the chip reads as a run of it. */
 .message-row .composer-chip {
   height: auto;
-  min-height: 20px;
-  padding: 1px 7px;
+  padding: 0 6px;
   font: inherit;
   line-height: inherit;
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 .message-row.assistant .message-col,
