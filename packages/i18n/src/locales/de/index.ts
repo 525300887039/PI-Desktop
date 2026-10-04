@@ -2585,6 +2585,7 @@ sklm: {
   },
   "errors": {
     COMPOSER_MCP_UNAVAILABLE: "Der ausgewählte MCP-Server ist getrennt oder in diesem Projekt nicht verfügbar. Verbinde ihn erneut und wähle ihn noch einmal aus.",
+    COMPOSER_MCP_REQUEST_REQUIRED: "Gib nach der Auswahl eines MCP-Servers oder Tools einen Auftragstext ein oder füge einen Anhang hinzu.",
     "HOST_UNAVAILABLE": "Der lokale Dienst ist nicht verfügbar",
     "MODEL_NOT_CONFIGURED": "Dieses Modell ist nicht eingerichtet oder der KI-Anbieter bietet es nicht an.",
     "TOOL_DENIED": "Die Berechtigung für diese Aktion wurde verweigert.",

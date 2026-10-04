@@ -1,7 +1,11 @@
 import type { ComposerCommand } from "@pi-desktop/shared";
 
 /** Expand a server selection only against the send-time project catalog. */
-export function expandMcpInvocation(content: string, commands: ComposerCommand[]) {
+export function expandMcpInvocation(
+  content: string,
+  commands: ComposerCommand[],
+  hasAttachments = false,
+) {
   const match = /^\/(mcp:\S+)(?:\s|$)/.exec(content);
   if (!match) return null;
   const command = commands.find((entry) => entry.name === match[1]);
@@ -12,6 +16,11 @@ export function expandMcpInvocation(content: string, commands: ComposerCommand[]
     });
   }
   const body = content.slice(match[0].length).trim();
+  if (!body && !hasAttachments) {
+    throw Object.assign(new Error("Add a task or attachment after the MCP selection."), {
+      errorCode: "COMPOSER_MCP_REQUEST_REQUIRED",
+    });
+  }
   return {
     command: content,
     mcpServerIds: [command.mcpServerId],

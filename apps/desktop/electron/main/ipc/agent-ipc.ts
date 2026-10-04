@@ -289,7 +289,11 @@ export function registerAgentIpc({
       "agent.steeringContext", { sessionId: req.sessionId, expectedTurnId: req.expectedTurnId },
     );
     const mcpExpansion = /^\/mcp:\S/.test(req.content)
-      ? expandMcpInvocation(req.content, await composerCommandService.buildComposerCommands(context.projectPath ?? null))
+      ? expandMcpInvocation(
+          req.content,
+          await composerCommandService.buildComposerCommands(context.projectPath ?? null),
+          Boolean(req.attachments?.length),
+        )
       : null;
     const prepared = await preparePromptAttachments(
       dataDir, req.sessionId, context.projectPath, req.attachments ?? [], context.supportsVision,
@@ -373,9 +377,13 @@ export function registerAgentIpc({
     // Validate explicit MCP selection before a turn or history replacement.
     // Use the session's project, never the currently focused renderer project.
     const mcpExpansion = !sessionMessage && /^\/mcp:\S/.test(req.content)
-      ? expandMcpInvocation(req.content, await composerCommandService.buildComposerCommands(
-          typeof session.projectPath === "string" ? session.projectPath.trim() || null : null,
-        ))
+      ? expandMcpInvocation(
+          req.content,
+          await composerCommandService.buildComposerCommands(
+            typeof session.projectPath === "string" ? session.projectPath.trim() || null : null,
+          ),
+          Boolean(req.attachments?.length),
+        )
       : null;
 
     const truncateFromMessageId =

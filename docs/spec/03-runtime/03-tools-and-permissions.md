@@ -86,7 +86,9 @@ when the queued user message is consumed, before the next provider dispatch.
 Unknown servers and selections with no mode-allowed tools fail explicitly.
 Activation preserves other tools, follows existing session restoration, and
 never bypasses execution permissions. Missing selection fields retain normal
-on-demand discovery. See `docs/adr/composer-mcp-invocations.md`.
+on-demand discovery. Main rejects a selected MCP command without task text or
+an attachment before opening or persisting a turn. See
+`docs/adr/composer-mcp-invocations.md`.
 
 ## 3. Common Tool Constraints
 

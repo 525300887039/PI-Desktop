@@ -2583,6 +2583,7 @@ sklm: {
   },
   "errors": {
     COMPOSER_MCP_UNAVAILABLE: "El servidor MCP seleccionado está desconectado o no está disponible en este proyecto. Vuelve a conectarlo y seleccionarlo.",
+    COMPOSER_MCP_REQUEST_REQUIRED: "Después de elegir un servidor o una herramienta MCP, escribe una tarea o añade un archivo adjunto.",
     "HOST_UNAVAILABLE": "El servicio local no está disponible",
     "MODEL_NOT_CONFIGURED": "Este modelo no está configurado o el proveedor de IA no lo ofrece.",
     "TOOL_DENIED": "Se denegó el permiso para esta acción",

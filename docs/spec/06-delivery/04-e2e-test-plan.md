@@ -2337,6 +2337,9 @@ identify the platform validation still needed.
   the typed text. All six fixture tools are activated without ToolSearch; a
   similarly named server remains unselected. Steering activates only for the
   request consuming the queued message. Plan and Host permissions still apply.
+- Submit a server/tool command with no task text or attachment. Main rejects it
+  before opening or persisting a turn; adding task text or an attachment allows
+  the selected tools to be offered to the model.
 - Disconnect, disable, or remove project access between menu selection and
   send. Sending fails before a new turn or history replacement. Steering uses
   the same validation; native Pi cannot silently accept Desktop MCP commands.

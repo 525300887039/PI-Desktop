@@ -2598,6 +2598,7 @@ sklm: {
   },
   errors: {
     COMPOSER_MCP_UNAVAILABLE: "所選 MCP 伺服器已中斷連線或在目前專案中無法使用。請重新連線並選取。",
+    COMPOSER_MCP_REQUEST_REQUIRED: "選取 MCP 伺服器或工具後，請輸入任務內容或新增附件。",
     HOST_UNAVAILABLE: "本地服務不可用",
     MODEL_NOT_CONFIGURED: "該模型尚未配置，或當前 AI 服務不提供此模型。",
     TOOL_DENIED: "此操作的許可權已被拒絕",

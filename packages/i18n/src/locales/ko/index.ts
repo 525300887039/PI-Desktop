@@ -2619,6 +2619,7 @@ importConfirm: "가져온 확장은 에이전트 프로세스 안에서 에이�
   },
   errors: {
     COMPOSER_MCP_UNAVAILABLE: "선택한 MCP 서버의 연결이 끊겼거나 현재 프로젝트에서 사용할 수 없습니다. 다시 연결하고 선택하세요.",
+    COMPOSER_MCP_REQUEST_REQUIRED: "MCP 서버 또는 도구를 선택한 뒤 작업 내용을 입력하거나 첨부 파일을 추가하세요.",
     HOST_UNAVAILABLE: "로컬 서비스를 사용할 수 없습니다",
     MODEL_NOT_CONFIGURED: "이 모델이 설정되지 않았거나 AI 프로바이더에서 제공하지 않습니다.",
     TOOL_DENIED: "이 작업에 대한 권한이 거부되었습니다",

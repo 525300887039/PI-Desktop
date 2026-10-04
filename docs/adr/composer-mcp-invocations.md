@@ -48,10 +48,12 @@ The optional catalog and internal RPC fields reuse the existing execution
 path without database, Plugin SDK or Host protocol changes. Server IDs are
 validated at the sidecar boundary and do not become tool-schema fields.
 
-Selection makes tools available but does not force execution. The model
-chooses arguments and calls, including whether to ask for clarification when
-the command has no task text. A renderer-driven tool call would duplicate
-runtime argument selection and permission handling.
+Selection makes tools available but does not force execution. Main rejects a
+server or tool command without task text or an attachment before opening a
+turn, so the model cannot infer an operation from the selection alone. With
+task text or attachment context, the model chooses arguments and calls. A
+renderer-driven tool call would duplicate runtime argument selection and
+permission handling.
 
 ## Unreleased user-facing change
 

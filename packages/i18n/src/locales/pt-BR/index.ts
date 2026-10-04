@@ -2539,6 +2539,7 @@ export const ptBR = {
   },
   errors: {
     COMPOSER_MCP_UNAVAILABLE: "O servidor MCP selecionado está desconectado ou indisponível neste projeto. Reconecte-o e selecione-o novamente.",
+    COMPOSER_MCP_REQUEST_REQUIRED: "Depois de escolher um servidor ou ferramenta MCP, informe uma tarefa ou adicione um anexo.",
     HOST_UNAVAILABLE: "O serviço local está indisponível",
     MODEL_NOT_CONFIGURED: "Este modelo não está configurado ou o provedor de IA não o oferece.",
     TOOL_DENIED: "A permissão foi negada para esta ação",

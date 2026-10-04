@@ -2723,6 +2723,7 @@ importConfirm: "Imported extensions run inside the agent process with the same a
   },
   errors: {
     COMPOSER_MCP_UNAVAILABLE: "The selected MCP server is disconnected or unavailable in this project. Reconnect it and select it again.",
+    COMPOSER_MCP_REQUEST_REQUIRED: "Add task text or an attachment after selecting an MCP server or tool.",
     HOST_UNAVAILABLE: "The local service is unavailable",
     MODEL_NOT_CONFIGURED: "This model isn't set up, or the AI provider doesn't offer it.",
     TOOL_DENIED: "Permission was denied for this action",

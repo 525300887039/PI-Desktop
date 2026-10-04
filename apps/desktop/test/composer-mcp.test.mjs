@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { register } from "node:module";
 register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
 const { createComposerCommandService } = await import("../electron/main/ipc/composer-ipc.ts");
@@ -39,11 +40,16 @@ test("selection uses stable encoded IDs even when labels match", async () => {
   assert.deepEqual(expansion.mcpServerIds, ["docs/two"]);
   assert.doesNotMatch(expansion.expanded, /ToolSearch|mcp_docs_two_/);
   assert.match(expansion.expanded, /find API docs$/);
+  assert.throws(() => expandMcpInvocation("/mcp:docs%2Ftwo", commands), { errorCode: "COMPOSER_MCP_REQUEST_REQUIRED" });
+  assert.deepEqual(
+    expandMcpInvocation("/mcp:docs%2Ftwo", commands, true).mcpServerIds,
+    ["docs/two"],
+  );
   assert.equal(expandMcpInvocation("ordinary text /mcp:docs", commands), null);
   assert.equal(expandMcpInvocation("/mcp:docs template text", [{ name: "mcp:docs", kind: "template" }]), null);
 });
 
-function promptFixture(commandService) {
+function promptFixture(commandService, projectPath = "/repo") {
   const handlers = new Map();
   const calls = [];
   const sidecarCalls = [];
@@ -51,7 +57,7 @@ function promptFixture(commandService) {
   const host = { async call(method, params) {
     calls.push({ method, params });
     if (method === "settings.get") return {};
-    if (method === "session.get") return { session: { id: "target", projectPath: "/repo", messages: [] } };
+    if (method === "session.get") return { session: { id: "target", projectPath, messages: [] } };
     if (method === "session.beginTurn") return { turnId: "turn-1" };
     if (method === "session.appendMessage") return {};
     assert.fail(`unexpected RPC ${method}`);
@@ -61,7 +67,7 @@ function promptFixture(commandService) {
     getHost: () => host,
     getSidecar: () => ({ setProjectInstructionRoot() {}, async call(method, params) {
       sidecarCalls.push({ method, params });
-      if (method === "agent.steeringContext") return { projectPath: "/repo", supportsVision: false };
+      if (method === "agent.steeringContext") return { projectPath, supportsVision: false };
       return { accepted: true, turnId: "turn-1" };
     } }),
     getAgentHostBridge: () => null,
@@ -70,19 +76,19 @@ function promptFixture(commandService) {
     persistenceOutbox: {}, dataDir: "/unused-for-no-attachments",
     activeTurns: new Map(), activeTurnUsages: new Map(), approvedExecutionIdsBySession: new Map(), claimedExecutionSessions: new Map(),
     resolveAgentRuntimeLaunch: async () => ({
-      projectPath: "/repo", providerId: "provider", modelId: "model",
+      projectPath, providerId: "provider", modelId: "model",
       sidecarParams: { sessionId: "target", provider: { modelConfig: { input: ["text"] } } },
     }),
     acquireSessionOperation: async () => () => { released = true; },
     finishTurn: async () => { assert.fail("no turn failure expected"); },
     emitAgentEvent() {}, setNotificationViewingSessionId() {},
-    optionalWorkspaceRoot: async () => "/repo",
+    optionalWorkspaceRoot: async () => projectPath,
     composerCommandService: commandService,
     loadComposerTemplatesCached: async () => [],
   });
   return { calls, sidecarCalls, released: () => released,
     prompt: (content, extra = {}) => handlers.get(IPC.invoke.agentPrompt)({ sessionId: "target", content, ...extra }),
-    steer: content => handlers.get(IPC.invoke.agentSteer)({ sessionId: "target", content, expectedTurnId: "turn-1" }),
+    steer: (content, extra = {}) => handlers.get(IPC.invoke.agentSteer)({ sessionId: "target", content, expectedTurnId: "turn-1", ...extra }),
   };
 }
 
@@ -99,6 +105,29 @@ test("menu selection reaches runtime with MCP instructions and preserves the vis
   assert.equal(fixture.sidecarCalls[0].params.content, row.content);
   assert.equal(fixture.released(), true);
 });
+
+test("an attachment alone supplies request context for an MCP selection", async () => {
+  const projectPath = process.cwd();
+  const fixture = promptFixture(service([record("docs")], [ready("docs")]), projectPath);
+  const input = "/mcp:docs";
+  await fixture.prompt(input, {
+    attachments: [{ path: fileURLToPath(new URL("../package.json", import.meta.url)), name: "package.json", kind: "file" }],
+  });
+  const message = fixture.calls.find(c => c.method === "session.appendMessage").params.message;
+  assert.equal(message.command, input);
+  assert.equal(message.attachments.length, 1);
+  assert.deepEqual(fixture.sidecarCalls[0].params.mcpServerIds, ["docs"]);
+});
+
+for (const method of ["prompt", "steer"]) {
+  test(`command-only MCP ${method} is rejected before dispatching work`, async () => {
+    const fixture = promptFixture(service([record("docs")], [ready("docs")]));
+    await assert.rejects(fixture[method]("/mcp:docs"), { errorCode: "COMPOSER_MCP_REQUEST_REQUIRED" });
+    assert(!fixture.calls.some(c => ["session.beginTurn", "session.appendMessage"].includes(c.method)));
+    assert(!fixture.sidecarCalls.some(c => c.method === `agent.${method}`));
+    assert.equal(fixture.released(), method === "prompt");
+  });
+}
 
 for (const change of ["disconnect", "disable", "scope"]) {
   test(`send revalidates ${change} before opening or persisting a turn`, async () => {

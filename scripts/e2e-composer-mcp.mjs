@@ -78,6 +78,9 @@ try {
     pluginTools = descriptors.map(tool=>({name:tool.fullName,mcpServerId:tool.serverId,description:tool.description,parameters:tool.schema,risk:"low"}));
     const commands = await service.buildComposerCommands(workspace);
     const specific = process.env.MCP_SELECTION_TOOL === "1";
+    assert.throws(() => expandMcpInvocation("/mcp:chosen", commands), {
+      errorCode: "COMPOSER_MCP_REQUEST_REQUIRED",
+    });
     const expansion = expandMcpInvocation(`${specific ? "/mcp:chosen:probe_5" : "/mcp:chosen"} Read the validation nonce using probe_5.`, commands);
     assert.deepEqual(expansion.mcpToolNames, specific ? ["mcp_chosen_probe_5"] : undefined);
     assert.deepEqual(expansion.mcpServerIds,["chosen"]);

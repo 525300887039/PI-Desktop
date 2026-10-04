@@ -2609,6 +2609,7 @@ importConfirm: "İçe aktarılan uzantılar ajan sürecinde, ajanın kendi araç
   },
   errors: {
     COMPOSER_MCP_UNAVAILABLE: "Seçilen MCP sunucusunun bağlantısı kesildi veya bu projede kullanılamıyor. Yeniden bağlanıp tekrar seçin.",
+    COMPOSER_MCP_REQUEST_REQUIRED: "Bir MCP sunucusu veya aracı seçtikten sonra görev metni girin ya da bir ek ekleyin.",
     HOST_UNAVAILABLE: "Yerel servis kullanılamıyor",
     MODEL_NOT_CONFIGURED: "Bu model kurulu değil veya AI servisi onu sunmuyor.",
     TOOL_DENIED: "Bu eylem için izin reddedildi",
