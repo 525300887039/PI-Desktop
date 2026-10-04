@@ -11773,9 +11773,9 @@ This test plan spec is accepted when:
   `scratch/<sessionId>` directory, never to the visible or recently active
   project. Relative paths work inside that scratch root, containment and
   permission rules remain active, and no project artifact is created. The
-  temporary hero is localized and has no project switcher; project and
-  no-session hero states remain unchanged. Plan/Goal retain their project-root
-  boundary.
+  temporary hero is localized and has no project switcher; the project hero and
+  the no-project generic hero are unchanged by the temporary session. Plan/Goal
+  retain their project-root boundary.
 - **Specs linked**: `03-runtime/03-tools-and-permissions.md` §4/§4b,
   `03-runtime/10-session-state-machine.md`, `04-ux/01-ui-ia.md`,
   `04-ux/02-i18n-english-first.md`, ADR 0124
@@ -14805,7 +14805,8 @@ plugin-form fixtures in an isolated temporary directory at runtime.
 #### E2E-256: Empty-home project name switches among sidebar projects
 
 - **Preconditions**: At least two local projects are open in the sidebar; the
-  visible chat is an empty project-bound session.
+  visible chat is an empty project-bound session, and one open project has no
+  session at all.
 - **Steps**:
   1. Confirm the hero title underlines the current project name.
   2. Click the underlined name and inspect the menu.
@@ -14815,18 +14816,22 @@ plugin-form fixtures in an isolated temporary directory at runtime.
   5. Reopen the menu, choose Clone git project, paste a repository URL, then
      pick a parent folder or cancel.
   6. Open a temporary empty session and confirm the underline is absent.
+  7. Click the session-less project in the sidebar and inspect the hero.
 - **Expected**: The click opens a searchable, fixed switcher of the sidebar's
   open projects instead of the folder picker. Choosing another project
   activates it and lands on that project's empty home (reusing an empty
   session when one exists). Open project still uses the folder picker. Clone
   git project asks for a URL, then a folder, runs `git clone`, and opens the
-  cloned project. Temporary and no-session heroes stay without the switcher.
-  Escape and outside click dismiss the menu.
+  cloned project. Temporary heroes and the no-project home (no workspace) stay
+  without the switcher, while a project the user opens without any session
+  still names that project and keeps the switcher, because a task sent from
+  that empty home joins the project. Escape and outside click dismiss the menu.
 - **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`
 - **Acceptance**: Quality (navigation and accessibility)
 - **Milestone**: M5
 - **Status**: Unit-covered (`home-project-switcher.test.mjs`,
-  `git-clone.test.mjs`, `sidebar-preferences.test.mjs`); full UI scenario Draft
+  `home-project-name.test.mjs`, `git-clone.test.mjs`,
+  `sidebar-preferences.test.mjs`); full UI scenario Draft
   (run only in a capable environment when this surface changes)
 
 #### E2E-CLONE-accepts-a-lan-remote-and-rejects-metadata
