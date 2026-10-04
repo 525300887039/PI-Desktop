@@ -120,26 +120,51 @@ async function setSettingsSearch(value) {
   await settle();
 }
 async function checkCloudSyncVisibility() {
-  await setSettingsSearch("Cloud sync");
-  assert(!navButton("Cloud sync"), "Cloud sync must be absent from search without developer mode");
-  await setSettingsSearch("");
-
-  settings = { ...settings, developerMode: true };
-  flushSync(() => useAppStore.setState({ settings }));
-  await settle();
+  // Cloud sync is a public Experimental destination: no developer mode needed.
   await setSettingsSearch("Cloud sync");
   const syncButton = navButton("Cloud sync");
-  assert(syncButton, "Cloud sync must appear in settings search with developer mode");
+  assert(syncButton, "Cloud sync must appear in settings search without developer mode");
   assert(
     syncButton.querySelector(".settings-nav-experimental")?.textContent?.trim() === "Experimental",
-    "Cloud sync's rail entry must be marked Experimental",
+    "Cloud sync's rail entry must stay marked Experimental",
   );
 
   flushSync(() => syncButton.click());
   await settle();
   assert(
+    useAppStore.getState().settingsTab === "sync",
+    "Cloud sync must open its page without developer mode",
+  );
+  assert(
     document.querySelector(".settings-section-title")?.textContent?.includes("Experimental"),
-    "Cloud sync's page title must be marked Experimental",
+    "Cloud sync's page title must stay marked Experimental",
+  );
+  await setSettingsSearch("");
+
+  // Developer mode no longer gates this destination, so it cannot hide the page.
+  settings = { ...settings, developerMode: true };
+  flushSync(() => useAppStore.setState({ settings }));
+  await settle();
+  assert(navButton("Cloud sync"), "Cloud sync must stay in the rail with developer mode on");
+
+  settings = { ...settings, developerMode: false };
+  flushSync(() => useAppStore.setState({ settings }));
+  await settle();
+  assert(
+    useAppStore.getState().settingsTab === "sync",
+    "Cloud sync must not fall back to General when developer mode changes",
+  );
+  assert(navButton("Cloud sync"), "Cloud sync must stay in the rail without developer mode");
+  await setSettingsSearch("");
+
+  // Remote hosts keeps the developer-mode gate, including the page fallback.
+  settings = { ...settings, developerMode: true };
+  flushSync(() => useAppStore.setState({ settings }));
+  await settle();
+  await select("Remote hosts");
+  assert(
+    useAppStore.getState().settingsTab === "remoteHosts",
+    "Remote hosts must open while developer mode is on",
   );
 
   settings = { ...settings, developerMode: false };
@@ -147,10 +172,9 @@ async function checkCloudSyncVisibility() {
   await settle();
   assert(
     useAppStore.getState().settingsTab === "general",
-    "A Cloud sync page hidden by developer mode must return to General",
+    "A Remote hosts page hidden by developer mode must return to General",
   );
-  assert(!navButton("Cloud sync"), "Cloud sync must leave the rail when developer mode is off");
-  await setSettingsSearch("");
+  assert(!navButton("Remote hosts"), "Remote hosts must leave the rail when developer mode is off");
 }
 async function scroll() {
   pane().scrollTop = 220;

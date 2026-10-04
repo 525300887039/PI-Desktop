@@ -282,8 +282,6 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
     labelKey: "settings.nav.sync",
     titleKey: "settings.configSync.title",
     group: "system",
-    developerOnly: true,
-    developmentOnly: true,
     experimentalBadgeKey: "settings.configSync.experimental",
     keywordKeys: [
       "settings.configSync.connectionTitle",
