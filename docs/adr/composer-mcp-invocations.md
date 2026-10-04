@@ -1,4 +1,4 @@
-# Composer MCP Invocations
+# ADR: Composer MCP Invocations
 
 - Status: Accepted
 - Date: 2026-10-04
