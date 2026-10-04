@@ -575,6 +575,15 @@ export const tr = {
     renameSave: "Kaydet",
     renameSaving: "Kaydediliyor…",
   },
+  planHistory: {
+    pending: "Onay bekleniyor",
+    approved: "Onaylandı",
+    rejected: "Reddedildi",
+    expired: "Süresi doldu",
+    interrupted: "Kesintiye uğradı",
+    unknown: "Durum kullanılamıyor",
+    superseded: "Yeni sürümle değiştirildi",
+  },
   plan: {
     planning: "Planlanıyor",
     approvalRegion: "Plan onayı",

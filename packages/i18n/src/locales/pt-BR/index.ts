@@ -564,6 +564,15 @@ export const ptBR = {
     renameSave: "Salvar",
     renameSaving: "Salvando…"
   },
+  planHistory: {
+    pending: "Aguardando aprovação",
+    approved: "Aprovado",
+    rejected: "Rejeitado",
+    expired: "Expirado",
+    interrupted: "Interrompido",
+    unknown: "Estado indisponível",
+    superseded: "Substituído",
+  },
   plan: {
     planning: "Planejando",
     approvalRegion: "Aprovação do plano",

@@ -575,6 +575,15 @@ export const ko = {
     renameSave: "저장",
     renameSaving: "저장 중…",
   },
+  planHistory: {
+    pending: "승인 대기",
+    approved: "승인됨",
+    rejected: "거부됨",
+    expired: "만료됨",
+    interrupted: "중단됨",
+    unknown: "상태를 확인할 수 없음",
+    superseded: "새 버전으로 대체됨",
+  },
   plan: {
     planning: "계획 중",
     approvalRegion: "계획 승인",
