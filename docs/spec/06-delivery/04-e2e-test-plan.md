@@ -12579,7 +12579,7 @@ are withdrawn with ADR 0165.
   project's second folder, then one that resolves in its primary folder. 8)
   Right-click the sent `@path` chip, the inline-code reference, the markdown
   link, the local image, a tool row's file path, a tool result's file list, and
-  an attachment thumbnail; then right-click a reference that matches nothing. 9)
+  an attachment image chip; then right-click a reference that matches nothing. 9)
   On that chip, use Copy full path and Copy relative path, then do the same on a
   reference that resolves in the session scratch store.
 - **Expected**:
@@ -12587,7 +12587,7 @@ are withdrawn with ADR 0165.
     file's own folder (Show in folder) and both of its addresses (Copy full
     path, Copy relative path). The inline-code reference, the file link, the
     local image, a tool row's path, a tool result's file or match list, and an
-    attachment thumbnail offer the same items, and a reference that matches
+    attachment image chip offer the same items, and a reference that matches
     nothing reports itself instead of revealing a same-named file elsewhere.
   - A copy writes exactly what it names: the absolute address for the full copy
     and the project-relative spelling for the relative one; a scratch or
@@ -12789,9 +12789,9 @@ are withdrawn with ADR 0165.
   `docs/pixel.png`. The user has previously pasted an image so the session
   JSONL stores an `attachments/<sha256>` image ref with a stored mimeType.
 - **Steps**:
-  1. Reopen the session. Confirm the pasted image renders as a thumbnail, not
-     only a file chip.
-  2. Click the thumbnail. Confirm the host files viewer opens on that
+  1. Reopen the session. Confirm the pasted image renders as a chip like any
+     other attachment, and that hovering or focusing it reveals its preview card.
+  2. Click the chip. Confirm the host files viewer opens on that
      attachment ref and shows the image.
   3. Send a turn whose assistant markdown includes `![](docs/pixel.png)` and
      `![](/etc/passwd)`. Confirm the workspace image renders inline and the
@@ -12801,7 +12801,7 @@ are withdrawn with ADR 0165.
 - **Expected**:
   - Contained image refs display inline within the 5MB cap.
   - Outside-root paths and mime spoofing of non-image extensions stay closed.
-  - Clicking a resolved thumbnail opens the host `file:` tab, not the OS
+  - Clicking a resolved image chip opens the host `file:` tab, not the OS
     handler.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `04-ux/08-component-spec.md` §8.3, ADR 0172, `08-meta/decisions-log.md` (D334)

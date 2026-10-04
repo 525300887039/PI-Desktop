@@ -79,6 +79,7 @@ const shared = load(new URL("../src/features/chat/transcript/shared.tsx", import
     useVerifiedChatText: (text) => [{ kind: "text", text: String(text ?? "") }],
   },
   "../../../components/ContextMenu": { ContextMenu: () => null },
+  "../../../components/ImageHoverCard": { ImageHoverCard: () => null },
   "../../../components/Markdown": {
     Markdown: ({ source }) => source,
     useCopy: () => ({ copied: false, copy: () => {} }),

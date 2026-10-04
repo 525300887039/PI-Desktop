@@ -5,11 +5,13 @@ import { readComposerModule, readComposerSource } from "./helpers/composer-sourc
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
-const [composer, editor, hoverCard, hoverHook, styles, submitHook] = await Promise.all([
+const [composer, editor, hoverCard, hoverHook, card, cardStyles, styles, submitHook] = await Promise.all([
   readComposerSource(),
   readComposerModule("editor.ts"),
   readComposerModule("ComposerImageHoverPreview.tsx"),
   readComposerModule("hooks/useComposerImageHover.ts"),
+  read("../src/components/ImageHoverCard.tsx"),
+  read("../src/styles/image-hover-card.css"),
   read("../src/styles/composer-image-preview.css"),
   readComposerModule("hooks/useComposerSubmit.ts"),
 ]);
@@ -34,12 +36,15 @@ test("hovering an image chip reveals a read-only preview card", () => {
   assert.match(hoverHook, /getBoundingClientRect\(\)/);
   // A chip that moves under the pointer must not leave a stale card behind.
   assert.match(hoverHook, /editor\.addEventListener\("input", hide\)/);
-  assert.match(hoverCard, /className="composer-image-hover"/);
-  assert.match(hoverCard, /data-placement=\{placement\}/);
-  assert.match(styles, /\.composer-image-hover img \{[\s\S]*?max-width: min\(240px, 40vw\)/);
-  assert.match(styles, /\.composer-image-hover \{[\s\S]*?pointer-events: none/);
+  // One shared card serves the draft and the transcript.
+  assert.match(hoverCard, /<ImageHoverCard/);
+  assert.match(hoverCard, /anchor=\{target\?\.anchor \?\? null\}/);
+  assert.match(card, /className="image-hover-card"/);
+  assert.match(card, /data-placement=\{placement\}/);
+  assert.match(cardStyles, /\.image-hover-card img \{[\s\S]*?max-width: min\(240px, 40vw\)/);
+  assert.match(cardStyles, /\.image-hover-card \{[\s\S]*?pointer-events: none/);
   // The modal owns the open image; the card would only be noise behind it.
-  assert.match(hoverCard, /target=\{controller\.preview \? null : hover\}/);
+  assert.match(hoverCard, /const target = controller\.preview \? null : hover;/);
 });
 
 test("image tokens leave the prompt text only at submission", () => {

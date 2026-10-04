@@ -1,4 +1,4 @@
-import { serializeInlineComposerFileReferences } from "@pi-desktop/shared";
+import { serializeInlineComposerFileReferences, type MessageAttachment } from "@pi-desktop/shared";
 import { useComposerInputHistory } from "../../apps/desktop/src/features/chat/composer/hooks/useComposerInputHistory";
 import type { AppState } from "../../apps/desktop/src/stores/app-state";
 import { createQueueSlice } from "../../apps/desktop/src/stores/slices/queue-slice";
@@ -29,7 +29,7 @@ import {
 } from "../../apps/desktop/src/features/chat/composer/editor";
 import { api } from "../../apps/desktop/src/lib/api";
 import { FilesTab } from "../../apps/desktop/src/components/workpanel/FilesTab";
-import { FileRefChip } from "../../apps/desktop/src/features/chat/transcript/shared";
+import { FileRefChip, MessageAttachmentImage } from "../../apps/desktop/src/features/chat/transcript/shared";
 import { useOpenChatFileRef } from "../../apps/desktop/src/hooks/use-preview-target";
 import {
   readComposerDraft,
@@ -573,11 +573,43 @@ globalThis.composerPasteProbe = async () => {
     const close = () => flushSync(() => button(i18n.t("common.close")).click());
     // Hovering the chip reveals its preview card without opening the modal.
     chip.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
-    await until(() => document.querySelector<HTMLImageElement>(".composer-image-hover img")?.naturalWidth === 1,
+    await until(() => document.querySelector<HTMLImageElement>(".image-hover-card img")?.naturalWidth === 1,
       "hover preview card missing");
     chip.dispatchEvent(new PointerEvent("pointerout", { bubbles: true }));
-    await until(() => !document.querySelector(".composer-image-hover"), "hover preview card outlived the pointer");
+    await until(() => !document.querySelector(".image-hover-card"), "hover preview card outlived the pointer");
     editor.focus();
+    // A sent message's image attachment is that same chip, and hovering it shows
+    // the shared preview card instead of an inline thumbnail.
+    const messageHost = document.createElement("div");
+    messageHost.style.cssText = "position: relative;";
+    document.body.append(messageHost);
+    const messageRoot = createRoot(messageHost);
+    try {
+      const messageAttachment: MessageAttachment = {
+        kind: "image",
+        ref: imageReference.path,
+        name: imageReference.name,
+      };
+      flushSync(() => messageRoot.render(
+        <I18nextProvider i18n={i18n}>
+          <div role="list">
+            <MessageAttachmentImage attachment={messageAttachment} onOpenFile={noop} />
+          </div>
+        </I18nextProvider>,
+      ));
+      await new Promise(requestAnimationFrame);
+      const messageChip = messageHost.querySelector<HTMLElement>(".message-attachment-image-chip .chat-file-chip");
+      assert(messageChip, "a message image attachment must render as a chip");
+      assert(!messageHost.querySelector("img"), "a message image attachment must not inline a thumbnail");
+      messageChip!.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+      await until(() => document.querySelector<HTMLImageElement>(".image-hover-card img")?.naturalWidth === 1,
+        "message hover preview card missing");
+      messageChip!.dispatchEvent(new PointerEvent("pointerout", { bubbles: true }));
+      await until(() => !document.querySelector(".image-hover-card"), "message hover card outlived the pointer");
+    } finally {
+      flushSync(() => messageRoot.unmount());
+      messageHost.remove();
+    }
     setEditorCaret(editor, 7);
     flushSync(() => chip.click());
     assert(dialog(), "image attachment must open an overlay instead of the work panel");

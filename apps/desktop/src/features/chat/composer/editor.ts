@@ -275,11 +275,6 @@ export function isEditableTextReference(reference: ComposerFileReference): boole
   return reference.mimeType?.toLowerCase() === "text/plain" || /\.txt$/i.test(reference.name);
 }
 
-export function isComposerAudioReference(reference: ComposerFileReference): boolean {
-  const mime = reference.mimeType?.toLowerCase() ?? "";
-  return mime.startsWith("audio/") || AUDIO_FILE_PATTERN.test(reference.name);
-}
-
 /** Build the atomic inline chip element for one attachment reference. */
 function buildChipElement(
   reference: ComposerFileReference,
