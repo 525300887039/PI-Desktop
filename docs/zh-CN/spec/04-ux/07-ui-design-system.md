@@ -19,7 +19,7 @@
 1. 具有充满活力的渐变或有趣的插图的消费者品牌识别系统
 2. 完整的组件库规范（即[08-component-spec.md](/zh-CN/spec/04-ux/08-component-spec)）
 3. 自定义字体服务或 CDN 字体托管 — 使用本地捆绑
-4. 复杂的主题市场或用户可自定义的调色板（仅限 MVP：仅限 system/light/dark）
+4. 交互式调色板编辑器；已支持内置 system/light/dark 选项和插件贡献的 `ui.theme` 主题项
 5. 像素完美的 Figma 切换伪影
 
 ## 3. 视觉原则
