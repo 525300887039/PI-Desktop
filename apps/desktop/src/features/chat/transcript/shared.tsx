@@ -506,11 +506,6 @@ function SessionChip({ sessionId, fallbackName, ...position }: {
   );
 }
 
-/** A structured session attachment on a user message (issue #1324). */
-export function SessionRefChip({ attachment }: { attachment: MessageAttachment }) {
-  return <SessionChip sessionId={attachment.ref} fallbackName={attachment.name} />;
-}
-
 /** A bare `pi-desktop://session/<id>` link in prose, rendered as that chip. */
 export function SessionLinkChip({ sessionId, ...position }: { sessionId: string } & SourcePositionProps) {
   return (

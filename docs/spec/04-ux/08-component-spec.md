@@ -4201,7 +4201,7 @@ Conversation overflow                    Composer draft (unsent)
 
 | State | Appearance |
 |---|---|
-| Reference attached | Chat-icon chip on the user message, named with the catalog's reference label and the referenced conversation's current title |
+| Reference attached | The body link renders as a chat-icon chip named with the catalog's reference label and the referenced conversation's current title; the message shows no second block for it |
 | Reference skipped | Nothing is attached; the body link still renders as that chip |
 | Another project | Skipped the same way: that transcript is not this turn's context |
 | Self-reference | Dropped before any read, so the conversation itself is never a reference |
