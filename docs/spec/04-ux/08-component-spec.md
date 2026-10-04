@@ -4238,6 +4238,10 @@ Conversation overflow                    Composer draft (unsent)
   unknown id, or a `remote:` identifier stays plaintext rather than becoming a
   reference. A paste cannot make the app read a transcript its reader could not
   open.
+- A chip inside a message borrows that message's own face, size and leading, and
+  its tile is sized and aligned by that leading so it covers exactly one line of
+  message text: the label sits on the line's baseline instead of poking out of
+  the composer's compact box. The 11.5px/20px metric is draft-only.
 - The chip is a button with a catalog-built accessible name and a tooltip
   naming the conversation it opens; it is keyboard-activatable and leaves the
   surrounding selectable message text intact.
