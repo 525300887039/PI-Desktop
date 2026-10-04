@@ -1434,11 +1434,10 @@ is reserved for non-Settings contexts where OS-level rendering is acceptable.
   per D092, the content cards fill the pane width available from the current
   window instead of retaining D070's fixed 720px cap — the earlier in-shell
   200px rail and broad grouped directory are superseded
-- **Import**: four kinds (sessions / models / skills / MCP) behind one
-  page-scale segmented switcher, composed like the agent capability pages: a
-  quiet pre-scan next-action state per kind, one toolbar per kind (select-all
-  with both counts, the kind's own option, re-scan, import selected), and one
-  list whose group headers are quiet label lines and whose candidates are
-  individual tiles. No per-kind scan card, no tinted group band, no second
-  copy of the settings row scaffold
+- **Inline import workbenches**: model configuration, external skills, and
+  external MCP scans live in Models, Skills, and MCP respectively. Each page
+  exposes an explicit scan action and an inline selection workbench; opening a
+  workbench never scans automatically. Skills and MCP imports follow the
+  selected global/project scope. Settings has no session-import destination;
+  plugins retain session ingestion through their existing API.
 - Light destination cards use white elevated plates (not flat gray fills)

@@ -458,8 +458,8 @@ type ModelDescriptor = {
 - 模型卡片默认保持紧凑，按需展开 metadata/configuration，并让对话框操作留在
   可独立滚动的内容区域之外
 - 不要暴露原始的目录兼容性内部细节或提供商机密
-- 设置 → 导入可以从 Claude Code、Codex、OpenCode、Pi 和 CC Switch 复制
-  provider/model 行。扫描是显式的。已存储的 API key 会被复制进宿主密钥库；
+- 设置 → 模型的“提供商”区块提供内嵌扫描，可从 Claude Code、Codex、OpenCode、Pi
+  和 CC Switch 导入 provider/model 行。扫描是显式的。已存储的 API key 会被复制进宿主密钥库；
   OAuth/订阅授权则不会。重复导入时只会跳过等价提供商（归一化 URL + API
   风格 + 相同凭据）；同一端点的不同凭据仍保持为独立提供商。
   不涉及协议或模式版本升级（D342 / ADR 0179 / ADR 0188）
