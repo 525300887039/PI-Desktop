@@ -3843,9 +3843,12 @@ responses cannot restore an earlier order. Composer All models groups follow the
 default nor provider configuration. OAuth accounts remain in their separate section.
 
 1. **Model selection** — chat models are selected in the Composer. Its first
-   menu shows up to three recent available provider/model pairs and an All
-   models entry for the searchable catalog. New chats inherit the last usable
-   selection; existing chats keep their own binding. The fixed chat-default
+   menu has persistent search, up to three recent available provider/model pairs,
+   and an inline Other models disclosure. Without history, it shows all models.
+   New chats inherit the last actually used available model. Only accepted
+   message submission updates that preference; selection and reasoning changes
+   alone do not count as usage.
+   Existing chats keep their own binding. The fixed chat-default
    picker and service Make default action are absent. The independent image
    model row remains when image-generation candidates are configured.
 2. **Vendor accounts** — account labels, configured models, Test connection,

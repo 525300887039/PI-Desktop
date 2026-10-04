@@ -402,16 +402,17 @@ as the compact selected-chip label.
 
 ## 10. Recent chat model policy
 
-New desktop chats inherit the most recently selected or used available chat
+New desktop chats inherit the most recently used available chat
 model. An explicit draft selection takes precedence; existing sessions retain
 their pinned provider/model pair. Selecting or submitting an existing chat does
 not change another chat's binding. Opening a chat alone does not reorder history.
 
 The renderer stores up to 20 provider/model pairs in the local UI preferences,
 newest first, deduplicated by provider ID and case-insensitive full wire model ID.
-Accepted model configuration and prompt submission update the history; failed
-configuration and rejected submissions do not. Deferred configuration updates
-history after host acceptance. This preference survives renderer reload and app
+Only accepted message submission updates history, using that submission's
+provider/model pair. Selecting a model, changing reasoning, or applying deferred
+configuration alone does not count as usage. Rejected submissions do not replace
+the preference. Sending in an older chat does update the recent usage order. This preference survives renderer reload and app
 restart and is not part of cloud configuration sync.
 
 Inheritance skips deleted, disabled, unauthenticated and image-generation
@@ -422,8 +423,11 @@ IPC migration is required. Settings has no fixed chat-default picker or service
 "Make default" action. Image-generation selection remains independent.
 
 The combined Composer model menu shows the three most recent available bindings
-first. Each row identifies the provider as well as the model or alias. All models
-opens the existing searchable, provider-grouped catalog. Discovery enriches exact
+first. Each row identifies the provider as well as the model or alias. Search is
+always visible and searches all configured models. Other models expand inline,
+grouped by provider, without duplicating recent entries. With no history, all
+models are visible immediately. The current model is checked; reasoning controls
+remain below the list. Discovery enriches exact
 configured IDs without adding unconfigured choices. Model and reasoning changes
 retain the existing session configuration and permission boundaries.
 

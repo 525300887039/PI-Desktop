@@ -542,7 +542,7 @@ export const en = {
     assistantMessage: "Assistant message",
     model: "Model",
     recentModels: "Recently used",
-    allModels: "All models",
+    otherModels: "Other models",
     searchModels: "Search models",
     noModelResults: "No matching models",
     modelBadgeReasoning: "reasoning",

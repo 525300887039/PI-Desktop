@@ -1,15 +1,10 @@
-import { composerModelDisplayName, sameComposerModelId } from "../../../lib/composer-models";
-import { providerDisplayName } from "../../../lib/provider-display";
 import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 import { ComposerModelList } from "./ComposerModelList";
 import { AnchoredMenu } from "../../../components/settings/AnchoredMenu";
 import {
   IconBot,
-  IconCheck,
   IconChevronDown,
-  IconChevronLeft,
-  IconChevronRight,
 } from "../../../components/icons";
 import { TooltipButton } from "../../../components/ui";
 import type { useComposerModelMenu } from "./hooks/useComposerModelMenu";
@@ -46,18 +41,18 @@ export function ComposerModelPicker({
   const {
     open,
     setOpen,
-    view,
+    otherModelsExpanded,
+    setOtherModelsExpanded,
+    hasOtherModels,
     query,
     setQuery,
     modelHighlight,
     setModelHighlight,
-    rootMenuRef,
     modelSearchRef,
     modelListRef,
     modelGroups,
     recentEntries,
     thinkingMenuLevels,
-    showView,
     selectModel,
     commitThinkingLevel,
     onMenuKeyDown,
@@ -73,7 +68,7 @@ export function ComposerModelPicker({
       role="menu"
       align="end"
       side="top"
-      initialFocus="none"
+      initialFocus="input"
       onMenuKeyDown={onMenuKeyDown}
       trigger={(ref) => (
         <TooltipButton
@@ -88,7 +83,7 @@ export function ComposerModelPicker({
           onClick={() => {
             onCloseOtherMenus();
             if (!open) {
-              showView("root");
+              setOtherModelsExpanded(false);
               setQuery("");
               setModelHighlight(-1);
             }
@@ -109,76 +104,28 @@ export function ComposerModelPicker({
         </TooltipButton>
       )}
     >
-      {view === "root" ? (
-        <div className="composer-menu-root" ref={rootMenuRef}>
-          {rootActions}
-          {recentEntries.length > 0 ? (
-            <div role="group" aria-label={t("chat.recentModels")}>
-              <div className="composer-model-group-label">{t("chat.recentModels")}</div>
-              {recentEntries.map(({ provider, model }) => (
-                <button
-                  key={`${provider.id}:${model.modelId}`}
-                  type="button"
-                  className="composer-menu-entry"
-                  role="menuitemradio"
-                  aria-checked={provider.id === selectedProviderId && sameComposerModelId(model.modelId, selectedModelId ?? "")}
-                  title={`${providerDisplayName(provider)} · ${model.modelId}`}
-                  onClick={() => void selectModel(provider, model.modelId)}
-                >
-                  <span className="composer-menu-entry-label">{composerModelDisplayName(provider, model.modelId)}</span>
-                  <span className="composer-menu-entry-value">{providerDisplayName(provider)}</span>
-                  {provider.id === selectedProviderId && sameComposerModelId(model.modelId, selectedModelId ?? "") ? (
-                    <IconCheck size={14} aria-hidden="true" />
-                  ) : null}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <button
-            type="button"
-            className="composer-menu-entry"
-            role="menuitem"
-            aria-haspopup="menu"
-            onClick={() => showView("model")}
-          >
-            <IconBot size={14} aria-hidden="true" />
-            <span className="composer-menu-entry-label">{t("chat.allModels")}</span>
-            <span className="composer-menu-entry-value" title={modelLabel}>{modelLabel}</span>
-            <IconChevronRight size={14} aria-hidden="true" />
-          </button>
-          {/* The level is one drag away on the slider below (issue #417): the
-              menu has no separate reasoning view left to open. */}
-          {thinkingMenuLevels.length > 1 ? (
-            <ThinkingLevelSlider
-              key={`${selectedProviderId}:${selectedModelId}:${thinkingMenuLevels.join("|")}`}
-              levels={thinkingMenuLevels}
-              level={thinkingLevel}
-              label={t("chat.reasoningLevel")}
-              commit={commitThinkingLevel}
-            />
-          ) : null}
-        </div>
-      ) : (
-        <>
-          <button
-            type="button"
-            className="composer-menu-back"
-            role="menuitem"
-            onClick={() => showView("root")}
-          >
-            <IconChevronLeft size={14} aria-hidden="true" />
-            <span>{t("chat.model")}</span>
-          </button>
-          <div className="composer-menu-separator" />
-          <ComposerModelList
-            t={t} query={query} setQuery={setQuery}
-            modelSearchRef={modelSearchRef} modelListRef={modelListRef}
-            modelGroups={modelGroups} modelHighlight={modelHighlight}
-            setModelHighlight={setModelHighlight} selectModel={selectModel}
-            selectedProviderId={selectedProviderId} selectedModelId={selectedModelId}
+      <div className="composer-menu-root">
+        {rootActions}
+        <ComposerModelList
+          t={t} query={query} setQuery={setQuery}
+          modelSearchRef={modelSearchRef} modelListRef={modelListRef}
+          modelGroups={modelGroups} modelHighlight={modelHighlight}
+          recentEntries={recentEntries} hasOtherModels={hasOtherModels}
+          otherModelsExpanded={otherModelsExpanded}
+          setOtherModelsExpanded={setOtherModelsExpanded}
+          setModelHighlight={setModelHighlight} selectModel={selectModel}
+          selectedProviderId={selectedProviderId} selectedModelId={selectedModelId}
+        />
+        {thinkingMenuLevels.length > 1 ? (
+          <ThinkingLevelSlider
+            key={`${selectedProviderId}:${selectedModelId}:${thinkingMenuLevels.join("|")}`}
+            levels={thinkingMenuLevels}
+            level={thinkingLevel}
+            label={t("chat.reasoningLevel")}
+            commit={commitThinkingLevel}
           />
-        </>
-      )}
+        ) : null}
+      </div>
     </AnchoredMenu>
   );
 }

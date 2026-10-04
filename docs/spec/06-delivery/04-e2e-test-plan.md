@@ -16680,14 +16680,21 @@ host-created files. The full app's file-preview viewer is covered separately.
 
 ## Composer recent chat models
 
-- Select four distinct configured chat models across providers. Open the combined
+- Send accepted messages using four distinct configured chat models across providers. Open the combined
   model menu: exactly the latest three available pairs appear in recency order,
-  with provider labels. Select an older recent row and verify it moves first.
-- Open All models, search and choose using keyboard navigation. Verify thinking
+  with provider labels. Select an older recent row: order stays unchanged until
+  a message is accepted, at which point that model moves first.
+- Search immediately without expanding Other models; choose using keyboard
+  navigation. Expand Other models inline and verify no duplicate recent rows.
+  Without history, all configured models are directly visible. Verify thinking
   defaults still follow the selected binding and manual same-model levels survive.
-- Create a new chat: it inherits the latest selection. Reload local preferences
+- Create a new chat: it inherits the last actually used model. Reload local preferences
   and create another chat: the same binding is restored. An existing chat keeps
-  its own binding; rejected configuration does not replace the recent selection.
+  its own binding, including when opened after a different model was used.
+  Opening an old chat or changing a model or reasoning alone does not alter history.
+  Send in an older chat: accepted submission updates new-chat inheritance;
+  rejected submission does not. Deferred configuration alone does not count
+  as usage.
 - Disable/remove a provider or model and mark a model for image generation:
   unavailable history entries are skipped for inheritance and recent menu rows.
 - Settings contains no fixed chat-default picker or Make default service action;

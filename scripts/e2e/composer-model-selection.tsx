@@ -1,4 +1,3 @@
-import { loadRecentModels } from "../../apps/desktop/src/lib/recent-models";
 import { ComposerModelPicker } from "../../apps/desktop/src/features/chat/composer/ComposerModelPicker";
 import { createInstance } from "i18next";
 import { en } from "@pi-desktop/i18n";
@@ -8,7 +7,7 @@ import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import type { ModelInfo, ProviderPublic, SessionThinkingLevel } from "@pi-desktop/shared";
 import { useComposerModelMenu } from "../../apps/desktop/src/features/chat/composer/hooks/useComposerModelMenu";
-import { useAppStore, rememberSelectedModel } from "./fixtures/composer-model-selection-store";
+import { useAppStore } from "./fixtures/composer-model-selection-store";
 
 type MenuController = ReturnType<typeof useComposerModelMenu>;
 
@@ -76,7 +75,6 @@ function Fixture() {
     controlsBlocked: false,
     configureActiveSession: async (configuration) => {
       writes.push(configuration);
-      rememberSelectedModel({ providerId: provider.id, modelId: configuration.modelId ?? "model-a" });
       setModelId(configuration.modelId ?? "model-a");
       setThinkingLevel(configuration.thinkingLevel);
     },
@@ -112,15 +110,19 @@ globalThis.composerModelSelectionProbe = async () => {
   }
   recentRows[2].click();
   await settle();
-  if (!document.querySelector(".composer-menu-root [role=menuitemradio]")?.textContent?.includes("model-b")) {
-    throw new Error("Selecting a recent model must move it to the front");
+  if (!document.querySelector(".composer-menu-root [role=menuitemradio]")?.textContent?.includes("model-d")) {
+    throw new Error("Selecting without sending must preserve actual usage order");
   }
 
   const switchedLevel = document.querySelector(".selected-thinking-level")?.textContent?.trim() ?? "";
   await globalThis.composerModelSelectionController!.commitThinkingLevel("low");
   await settle();
-  const allModels = document.querySelector<HTMLButtonElement>(".composer-menu-root [aria-haspopup=menu]");
-  allModels!.click();
+  const disclosure = document.querySelector<HTMLButtonElement>(".composer-menu-root [aria-expanded]")!;
+  disclosure.click();
+  await settle();
+  const expandedRows = document.querySelectorAll(".composer-model-list [role=menuitemradio]");
+  if (expandedRows.length !== 4) throw new Error("Expanded models must appear once in the same list");
+  disclosure.click();
   await settle();
   const search = document.querySelector<HTMLInputElement>(".composer-model-search input")!;
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search, "model-b");
@@ -128,8 +130,13 @@ globalThis.composerModelSelectionProbe = async () => {
   await settle();
   search.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
   await settle();
-  const restored = loadRecentModels();
-  if (restored[0]?.modelId !== "model-b") throw new Error("Recent selection must survive local preference reload");
+  const restored = useAppStore.getState().recentModels;
+  if (restored[0]?.modelId !== "model-d") throw new Error("Menu interactions alone must not record usage");
+  useAppStore.setState({ recentModels: [] });
+  await settle();
+  if (document.querySelectorAll(".composer-model-list [role=menuitemradio]").length !== 4) {
+    throw new Error("Without history all configured models must be directly visible");
+  }
   useAppStore.setState({ recentModels: restored });
   await settle();
   return {

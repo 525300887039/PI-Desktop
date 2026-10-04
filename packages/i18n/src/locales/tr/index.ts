@@ -539,7 +539,7 @@ export const tr = {
     assistantMessage: "Asistan iletisi",
     model: "Model",
     recentModels: "Son kullanılanlar",
-    allModels: "Tüm modeller",
+    otherModels: "Diğer modeller",
     searchModels: "Model ara",
     noModelResults: "Eşleşen model yok",
     modelBadgeReasoning: "akıl yürütme",
