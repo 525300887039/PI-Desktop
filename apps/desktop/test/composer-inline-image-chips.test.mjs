@@ -19,10 +19,10 @@ const [composer, editor, hoverCard, hoverHook, card, cardStyles, styles, submitH
 test("pasted images stay inline chips like every other attachment", () => {
   assert.match(editor, /const image = chipIconKey\(reference\) === "image";/);
   assert.match(editor, /if \(image\) chip\.dataset\.image = "";/);
-  assert.match(editor, /const editableText = !image && isEditableTextReference\(reference\);/);
+  assert.match(editor, /const editableText = !image && !session && isEditableTextReference\(reference\);/);
   // Activating an image chip opens the preview; it never expands draft text.
-  assert.match(editor, /image \? \(\) => onOpenImage\(token\)/);
-  assert.match(editor, /chip\.dataset\.action = editableText \? "expand-text-reference" : "open-image-preview";/);
+  assert.match(editor, /image\s*\?\s*\(\) => onOpenImage\(token\)/);
+  assert.match(editor, /chip\.dataset\.action = editableText/);
   assert.match(composer, /openImageReferenceRef\.current = \(token\) => \{[\s\S]*?imagePreview\.open\(reference\)/);
   // The detached attachment row above the input shell is gone.
   assert.doesNotMatch(composer, /ComposerImageAttachments/);

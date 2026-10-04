@@ -9,7 +9,7 @@ import {
 type OptimisticFileReference = {
   path: string;
   name: string;
-  kind?: "image" | "file";
+  kind?: "image" | "file" | "session";
   mimeType?: string;
   /** Large-text paste tokens travel inline in the text, not as attachments. */
   token?: string;

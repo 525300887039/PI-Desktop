@@ -4187,13 +4187,12 @@ from the conversation overflow menu and pastes it into a Composer draft (issue
 Conversation overflow                    Composer draft (unsent)
 ┌─────────────────────────────┐          ┌──────────────────────────────────┐
 │ Pin conversation            │          │ continue from                    │
-│ Create branch               │          │ pi-desktop://session/ab12cd34    │
+│ Create branch               │          │ [💬 Conversation · ab12cd34]     │
 │ Copy conversation link      │          └──────────────────────────────────┘
 │ Delete conversation         │
 └─────────────────────────────┘          Sent user message
                                          ┌──────────────────────────────────┐
                                          │ continue from                    │
-                                         │ pi-desktop://session/ab12cd34    │
                                          │ [💬 Conversation · Nightly check]│
                                          └──────────────────────────────────┘
 ```
@@ -4203,7 +4202,7 @@ Conversation overflow                    Composer draft (unsent)
 | State | Appearance |
 |---|---|
 | Reference attached | Chat-icon chip on the user message, named with the catalog's reference label and the referenced conversation's current title |
-| Reference skipped | Nothing is attached; the link stays plaintext in the message |
+| Reference skipped | Nothing is attached; the body link still renders as that chip |
 | Another project | Skipped the same way: that transcript is not this turn's context |
 | Self-reference | Dropped before any read, so the conversation itself is never a reference |
 | Empty referenced conversation | The resolver attaches nothing and the message keeps the link |
@@ -4229,8 +4228,9 @@ Conversation overflow                    Composer draft (unsent)
   it. The name recorded when the reference was made stays the fallback for a
   conversation this viewer no longer lists, and is the name the quoted block
   keeps for the model.
-- The visible text is never rewritten: the link a reader typed stays in the
-  message, and only the attached excerpt is additive.
+- The draft shows a pasted link as that chip, and the submitted text still
+  carries the link: prose is never rewritten on the wire, and the attached
+  excerpt is additive.
 - Boundary: only conversations of the same project are read, the current
   conversation is dropped before any read, and a link to another project, an
   unknown id, or a `remote:` identifier stays plaintext rather than becoming a

@@ -153,7 +153,7 @@ test("a referenced conversation renders as a chip naming its own target", () => 
   assert.match(html, /data-session-id="session-a"/);
   assert.match(
     read("../src/features/chat/transcript/shared.tsx"),
-    /onClick=\{\(\) => void selectSession\(attachment\.ref\)\.catch\(\(\) => undefined\)\}/,
+    /onClick=\{\(\) => void selectSession\(sessionId\)\.catch\(\(\) => undefined\)\}/,
     "activating the chip opens the referenced conversation",
   );
   assert.ok(
@@ -287,4 +287,18 @@ test("the reference keys exist in every shipped locale", () => {
   }
   assert.equal(catalogs["zh-CN"].nav.copySessionLink, "复制会话链接");
   assert.equal(catalogs["zh-CN"].chat.sessionReference, "会话引用");
+});
+
+test("a session link in the message body renders as that chip", () => {
+  // A bare link in prose segments as a session target and renders through the
+  // same chip the structured attachment uses, named by the live conversation.
+  const source = read("../src/features/chat/transcript/shared.tsx");
+  assert.match(source, /export function SessionLinkChip\(/);
+  assert.match(source, /\) : segment\.target\.kind === "session" \? \(/);
+  assert.match(
+    source,
+    /<SessionLinkChip key=\{index\} sessionId=\{segment\.target\.sessionId\} \{\.\.\.position\} \/>/,
+  );
+  assert.match(source, /data-action="open-session-reference"/);
+  assert.match(source, /session\.id === sessionId/);
 });

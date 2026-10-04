@@ -248,6 +248,12 @@ export function useComposerDraft({
     const reference = referenceByTokenRef.current.get(token);
     if (reference) imagePreview.open(reference);
   };
+  const openSessionReferenceRef = useRef<(token: string) => void>(() => {});
+  openSessionReferenceRef.current = (token) => {
+    const reference = referenceByTokenRef.current.get(token);
+    if (!reference || reference.kind !== "session") return;
+    void useAppStore.getState().selectSession(reference.path).catch(() => undefined);
+  };
   const pendingEditorCaretRef = useRef<number | null>(
     initialDraft?.text ? initialDraft.text.length : null,
   );
@@ -278,6 +284,7 @@ export function useComposerDraft({
       (token) => removeChipByTokenRef.current(token),
       (token) => expandTextReferenceRef.current(token),
       (token) => openImageReferenceRef.current(token),
+      (token) => openSessionReferenceRef.current(token),
     );
     editorValueRef.current = nextValue;
   };
@@ -466,9 +473,12 @@ export function useComposerDraft({
     if (previousWorkspacePathRef.current === workspacePath) return;
     previousWorkspacePathRef.current = workspacePath;
     const current = fileReferencesRef.current;
-    // Plugin marks carry their text, not a workspace path.
+    // Plugin marks carry their text, not a workspace path, and a session
+    // reference names a conversation rather than a file in this project.
     const survives = (fileReference: ComposerFileReference) =>
-      Boolean(fileReference.plugin) || isPersistedScratchReference(fileReference.path);
+      Boolean(fileReference.plugin) ||
+      fileReference.kind === "session" ||
+      isPersistedScratchReference(fileReference.path);
     const kept = current.filter(survives);
     if (kept.length === current.length) return;
     markComposerDraftEdited(draftKeyRef.current);

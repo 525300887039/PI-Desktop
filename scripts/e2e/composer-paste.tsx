@@ -1,4 +1,4 @@
-import { serializeInlineComposerFileReferences, type MessageAttachment } from "@pi-desktop/shared";
+import { formatSessionLink, serializeInlineComposerFileReferences, type MessageAttachment } from "@pi-desktop/shared";
 import { useComposerInputHistory } from "../../apps/desktop/src/features/chat/composer/hooks/useComposerInputHistory";
 import type { AppState } from "../../apps/desktop/src/stores/app-state";
 import { createQueueSlice } from "../../apps/desktop/src/stores/slices/queue-slice";
@@ -828,6 +828,28 @@ globalThis.composerPasteProbe = async () => {
     assert(controller.fileReferences[0]?.path === attachedId &&
       controller.ref.current!.querySelector(".composer-chip[data-image]"),
       "image-only draft did not survive session switching");
+
+    // A pasted conversation link is an inline chip, and the submitted text
+    // carries that link again.
+    const linkedSession = "session-link-fixture";
+    editor = await paste(`continue from ${formatSessionLink(linkedSession)}`, []);
+    const linkChip = editor.querySelector<HTMLElement>(
+      `.composer-chip[data-session-id="${linkedSession}"]`,
+    );
+    assert(linkChip, "a pasted conversation link must render as an inline chip");
+    assert(
+      !readEditorValue(editor).includes(formatSessionLink(linkedSession)),
+      "the chip replaces the raw link in the draft text",
+    );
+    assert(
+      serializeInlineComposerFileReferences(readEditorValue(editor), controller.fileReferences)
+        .includes(formatSessionLink(linkedSession)),
+      "the submitted text carries the conversation link",
+    );
+    assert(
+      linkChip!.querySelector(".composer-chip-name")?.textContent?.includes(linkedSession.slice(0, 8)),
+      "the chip names the conversation it opens",
+    );
 
     await paste("file names", nativeFiles);
     assert(
