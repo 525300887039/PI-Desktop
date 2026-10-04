@@ -108,7 +108,9 @@ const previewTarget = loadModule("../src/hooks/use-preview-target.ts", {
       },
     },
   },
-  "../lib/chat-links": loadModule("../src/lib/chat-links.ts", {}),
+  "../lib/chat-links": loadModule("../src/lib/chat-links.ts", {
+    "@pi-desktop/shared": await import("@pi-desktop/shared"),
+  }),
   "../lib/open-http-url": { openHttpUrl: (...args) => calls.urls.push(args) },
   "../lib/work-panel-tabs": loadModule("../src/lib/work-panel-tabs.ts", {}),
 });

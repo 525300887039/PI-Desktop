@@ -334,3 +334,20 @@ test("large pasted text is preserved byte-for-byte in session scratch", async ()
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("a pasted session link becomes an inline chip with the link as its text", () => {
+  // The paste path turns each link into a token-backed chip, and the draft
+  // keeps the conversation link as the text the model receives.
+  assert.match(composer, /const sessionIds = parseSessionLinks\(text\);/);
+  assert.match(composer, /pasteSessionLinks\(text\);/);
+  assert.match(composer, /for \(const span of \[\.\.\.sessionLinkSpans\(text\)\]\.reverse\(\)\)/);
+  assert.match(
+    composer,
+    /createFileReference\(span\.id, sessionChipName\(span\.id\), ownerSessionId, \{\s*kind: "session",\s*token,/,
+  );
+  assert.match(composer, /return `\$\{t\("chat\.sessionReference"\)\} · \$\{title \|\| id\.slice\(0, 8\)\}`;/);
+  // The chip opens its conversation, and its token serializes back to the link.
+  assert.match(composer, /if \(reference\.kind === "session"\) return "session";/);
+  assert.match(composer, /chip\.dataset\.action = editableText[\s\S]*?"open-session-reference"/);
+  assert.match(composer, /selectSession\(reference\.path\)/);
+});

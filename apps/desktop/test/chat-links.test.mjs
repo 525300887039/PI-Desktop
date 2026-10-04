@@ -766,3 +766,20 @@ test("resolvePreviewTarget carries line/col on file chips (#681)", () => {
     column: 7,
   });
 });
+
+test("session links segment as their own target", () => {
+  const link = "pi-desktop://session/6f1d2c3b-4a59-4e7f-8a90-b1c2d3e4f506";
+  const segments = splitChatText(`analyze ${link} please`, ROOT);
+  assert.deepEqual(
+    segments.map((segment) => segment.text),
+    ["analyze ", link, " please"],
+  );
+  const target = segments.find((segment) => segment.kind === "target");
+  assert.deepEqual(target.target, {
+    kind: "session",
+    sessionId: "6f1d2c3b-4a59-4e7f-8a90-b1c2d3e4f506",
+  });
+  // A remote id and a bare scheme are not local conversations.
+  assert.equal(resolvePreviewTarget("pi-desktop://session/remote:abc", ROOT), null);
+  assert.equal(resolvePreviewTarget("pi-desktop://session/", ROOT), null);
+});

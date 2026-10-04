@@ -467,11 +467,14 @@ export function FileRefChip({
 }
 
 /**
- * A referenced conversation on a user message (issue #1324). The draft carried
- * a `pi-desktop://session/<id>` link; main attached a bounded excerpt for the
- * model and this chip is how the reader sees and reopens it.
+ * A referenced conversation as a chip. The draft carried a
+ * `pi-desktop://session/<id>` link; main attached a bounded excerpt for the
+ * model, and this chip is how the reader sees and reopens it.
  */
-export function SessionRefChip({ attachment }: { attachment: MessageAttachment }) {
+function SessionChip({ sessionId, fallbackName, ...position }: {
+  sessionId: string;
+  fallbackName: string;
+} & SourcePositionProps) {
   const { t } = useTranslation();
   const selectSession = useAppStore((state) => state.selectSession);
   // The chip names a conversation, not the name that conversation carried when
@@ -480,25 +483,38 @@ export function SessionRefChip({ attachment }: { attachment: MessageAttachment }
   // model block quotes, and it stays the fallback for a conversation this
   // viewer no longer lists.
   const liveTitle = useAppStore(
-    (state) => state.sessions.find((session) => session.id === attachment.ref)?.title,
+    (state) => state.sessions.find((session) => session.id === sessionId)?.title,
   );
-  const name = (liveTitle ?? "").trim() || attachment.name;
+  const name = (liveTitle ?? "").trim() || fallbackName;
   const label = `${t("chat.sessionReference")} · ${name}`;
   return (
     <button
       type="button"
       className="composer-chip chat-file-chip"
+      {...position}
       data-action="open-session-reference"
-      data-session-id={attachment.ref}
+      data-session-id={sessionId}
       title={t("chat.sessionReferenceOpen", { title: name })}
       aria-label={label}
-      onClick={() => void selectSession(attachment.ref).catch(() => undefined)}
+      onClick={() => void selectSession(sessionId).catch(() => undefined)}
     >
       <span className="composer-chip-icon" aria-hidden>
         <IconChat size={13} />
       </span>
       <span className="composer-chip-name">{label}</span>
     </button>
+  );
+}
+
+/** A structured session attachment on a user message (issue #1324). */
+export function SessionRefChip({ attachment }: { attachment: MessageAttachment }) {
+  return <SessionChip sessionId={attachment.ref} fallbackName={attachment.name} />;
+}
+
+/** A bare `pi-desktop://session/<id>` link in prose, rendered as that chip. */
+export function SessionLinkChip({ sessionId, ...position }: { sessionId: string } & SourcePositionProps) {
+  return (
+    <SessionChip sessionId={sessionId} fallbackName={sessionId.slice(0, 8)} {...position} />
   );
 }
 
@@ -574,6 +590,8 @@ export function LinkifiedText({ text, attachments }: { text: string; attachments
             onOpen={openFileRef}
             {...position}
           />
+        ) : segment.target.kind === "session" ? (
+          <SessionLinkChip key={index} sessionId={segment.target.sessionId} {...position} />
         ) : (
           <TooltipButton
             key={index}

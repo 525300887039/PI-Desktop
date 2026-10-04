@@ -52,12 +52,12 @@ test("accepted files become compact references while directories keep completion
   );
   assert.match(composer, /applyEditorDraft\(\s*nextText,/);
   // Workspace switches still drop relative `@` chips, not every token-backed
-  // chip — paste/scratch paths are absolute and plugin marks carry no path,
-  // so both must survive.
+  // chip — paste/scratch paths are absolute, plugin marks carry no path, and a
+  // session reference names a conversation, so all three must survive.
   assert.match(composer, /function isPersistedScratchReference\(path: string\)/);
   assert.match(
     composer,
-    /Boolean\(fileReference\.plugin\) \|\| isPersistedScratchReference\(fileReference\.path\)/,
+    /Boolean\(fileReference\.plugin\) \|\|[\s\S]*?fileReference\.kind === "session" \|\|[\s\S]*?isPersistedScratchReference\(fileReference\.path\)/,
   );
   assert.match(composer, /kept = current\.filter\(survives\)/);
   assert.doesNotMatch(
