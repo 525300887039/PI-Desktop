@@ -273,6 +273,7 @@ export const tr = {
     slashGroupApp: "Uygulama komutları",
     slashGroupPlugins: "Eklenti komutları",
     slashGroupExtensions: "Uzantı komutları",
+    slashGroupMcp: "MCP",
     slashGroupSkills: "Beceriler",
     slashEmpty: "Eşleşen komut yok",
     slashCommandSourceUnavailable: "Komut listesi yüklenemedi, hiçbir şey gönderilmedi. Tekrar deneyin.",
@@ -2605,6 +2606,7 @@ importConfirm: "İçe aktarılan uzantılar ajan sürecinde, ajanın kendi araç
     phase: { idle: "Kapalı", preparing: "Hazırlanıyor", "acquiring-mic": "Mikrofon bekleniyor", negotiating: "Anlaşılıyor", connecting: "Bağlanıyor…", connected: "Bağlandı", reconnecting: "Yeniden bağlanıyor", closing: "Sonlandırılıyor…", ended: "Sonlandı", failed: "Durduruldu" },
   },
   errors: {
+    COMPOSER_MCP_UNAVAILABLE: "Seçilen MCP sunucusunun bağlantısı kesildi veya bu projede kullanılamıyor. Yeniden bağlanıp tekrar seçin.",
     HOST_UNAVAILABLE: "Yerel servis kullanılamıyor",
     MODEL_NOT_CONFIGURED: "Bu model kurulu değil veya AI servisi onu sunmuyor.",
     TOOL_DENIED: "Bu eylem için izin reddedildi",
