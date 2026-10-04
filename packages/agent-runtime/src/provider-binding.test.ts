@@ -470,6 +470,50 @@ describe("Anthropic adaptive thinking from models.dev reasoning options", () => 
       forceAdaptiveThinking: true,
     });
   });
+
+  // #926: a custom relay model id has no catalog entry, so reasoning options
+  // cannot derive the adaptive flag. A Claude-shaped id on the Anthropic wire
+  // defaults it on.
+  it("defaults adaptive thinking for a catalog-less Claude id on the Anthropic wire", async () => {
+    const { modelConfig: _omitted, ...custom } = anthropicProvider(
+      "claude-opus-5-5",
+      [],
+    );
+    void _omitted;
+    const request = await thinkingRequest({ ...custom, modelConfig: undefined });
+
+    expect(request?.thinking).toMatchObject({ type: "adaptive" });
+    expect(request?.thinking).not.toHaveProperty("budget_tokens");
+  });
+
+  it("lets a per-model compat record opt a custom Claude id out of adaptive thinking", async () => {
+    const { modelConfig: _omitted, ...custom } = anthropicProvider(
+      "claude-opus-5-5",
+      [],
+    );
+    void _omitted;
+    const model = buildProviderModel({
+      ...custom,
+      modelConfig: {
+        ...genericModelConfig("claude-opus-5-5", "https://gateway.example"),
+        compat: { forceAdaptiveThinking: false },
+      },
+    });
+    expect(model.compat).toMatchObject({ forceAdaptiveThinking: false });
+
+    // Precedence also holds when catalog reasoning options would derive the
+    // flag: the explicit record wins.
+    const derived = buildProviderModel({
+      ...anthropicProvider("claude-opus-5-5", [
+        { type: "effort", values: ["low", "medium", "high"] },
+      ]),
+      modelConfig: {
+        ...anthropicProvider("claude-opus-5-5", []).modelConfig!,
+        compat: { forceAdaptiveThinking: false },
+      },
+    });
+    expect(derived.compat).toMatchObject({ forceAdaptiveThinking: false });
+  });
 });
 
 describe("buildProviderModel OpenAI-compatible role compatibility", () => {
