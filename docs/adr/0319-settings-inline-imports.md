@@ -1,6 +1,9 @@
-# Inline External Imports in Owning Settings Destinations
+# ADR 0319: Inline External Imports in Owning Settings Destinations
 
-**Status:** Accepted
+## Status
+
+Accepted
+
 **Date:** 2026-10-04
 **Decision:** D645
 
