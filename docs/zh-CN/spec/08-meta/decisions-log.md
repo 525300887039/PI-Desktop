@@ -5213,3 +5213,14 @@ Markdown 源码，不是 `text/html` 负载；对禁用行内 HTML 的外部编�
   服务器对自身工具声明的风险标注不被信任，绝不降低审批路径。
 - 通过 `plugins.execute` 的分发、只读模式处理与 `mcp_` 命名空间不变。见 ADR
   `mcp-tool-approval-risk` 与 E2E-MCP-tool-requires-approval。
+
+## 2026-10-04 —— 云同步是对所有用户开放的实验性目的地（D642）
+
+- D642 移除设置中 `sync` 目的地的开发者模式与打包构建门控：其导轨行、页面和设置搜索
+  命中在任何构建中对所有用户可用，已保存的 `sync` 标签页也不再回落到常规。远程主机
+  保留这两道门控。
+- 该目的地继续在导轨行和页面标题上保留实验性徽章；同步行为、协议、Host schema 与
+  持久化数据均不变。
+- 由 `apps/desktop/test/settings-developer-only-destinations.test.mjs` 与
+  `pnpm test:e2e:settings-scroll` 的云同步探针覆盖。见 `04-ux/06-settings-ia.md` 与
+  E2E-CONFIG-SYNC-webdav-portable-configuration。
