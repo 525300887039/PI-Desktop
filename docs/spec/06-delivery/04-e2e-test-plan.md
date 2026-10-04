@@ -10330,6 +10330,12 @@ This test plan spec is accepted when:
   idle native macOS window must show no continuous frames from these markers.
   Start a new turn and reopen the hover card: the bounded animation can play again.
   GPU measurements must distinguish app frame submissions from whole-system load.
+- Repeat with the three idle-reachable indicators, one per idle window: leave a
+  session parked on a tool approval request, turn plan mode on, and raise a
+  backend warning banner. After 3.2 seconds none of the permission dot, the
+  plan-mode chip, or the warning dot has an active animation, and recording an
+  otherwise idle native macOS window shows no continuous frames from them.
+  Under reduced motion all three are static from the first painted frame.
 
 ### US-UI-68 Session-scoped inline permissions and artifacts (D138/D142)
 - Run two sessions concurrently and keep A visible while B reaches a tool

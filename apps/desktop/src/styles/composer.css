@@ -241,7 +241,7 @@
 .composer-mode-chip[data-planning="true"] svg {
   color: var(--ds-purple) !important;
   animation: composer-mode-planning-pulse 1.2s var(--motion-ease-standard)
-    infinite;
+    2;
 }
 
 @keyframes composer-mode-face-in {
@@ -882,6 +882,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .composer-mode-chip[data-planning="true"] svg {
+    animation: none;
+  }
+
   .todo-dock-header,
   .todo-dock-content,
   .todo-dock-row {
