@@ -67,6 +67,18 @@ test("message image chips carry no tile or stroke of their own (D297)", () => {
   assert.match(block, /display: inline-flex;/);
 });
 
+test("a chip inside a message reads at that message's own type scale", () => {
+  const start = messages.indexOf(".message-row .composer-chip {");
+  assert.notEqual(start, -1, "message chip type rule is missing");
+  const block = messages.slice(start, messages.indexOf("}", start));
+  // The composer's compact 11.5px/20px chip is a draft-only box; in a message
+  // the chip borrows the face, size and leading around it.
+  assert.match(block, /font: inherit;/);
+  assert.match(block, /height: auto;/);
+  assert.match(block, /line-height: inherit;/);
+  assert.doesNotMatch(block, /--text-xs-plus/);
+});
+
 test("dead components are gone", () => {
   assert.ok(!existsSync(join(here, "../src/components/Topbar.tsx")));
   assert.ok(!existsSync(join(here, "../src/components/HomeQuickActions.tsx")));

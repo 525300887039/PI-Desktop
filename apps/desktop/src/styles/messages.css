@@ -50,6 +50,18 @@
   max-width: 240px;
 }
 
+/* A chip inside a message belongs to that message: it borrows the message's own
+   face, size and leading and only keeps the tile surface. The composer's
+   compact 11.5px/20px metric is a draft-only box. */
+.message-row .composer-chip {
+  height: auto;
+  min-height: 20px;
+  padding: 1px 7px;
+  font: inherit;
+  line-height: inherit;
+  vertical-align: middle;
+}
+
 .message-row.assistant .message-col,
 .message-row.system .message-col,
 .message-row.tool .message-col {
