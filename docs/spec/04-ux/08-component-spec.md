@@ -2868,9 +2868,11 @@ reasoning-level control.
   closed when the active session changes, and shows at most eight ordered rows.
   The list stays mounted while collapsed so opening and closing can animate with
   a bounded height/opacity transition; collapsed content is `aria-hidden` and
-  reduced-motion users receive an immediate state change. Completed rows use a
-  success-tinted tile with a check icon, in-progress rows use the accent tint,
-  and cancelled rows are muted; each status symbol has a localized accessible
+  reduced-motion users receive an immediate state change. A collapsed dock
+  reserves only its header row: the list's inset is clipped, never laid out
+  below the header. Completed rows use a success-tinted tile with a check
+  icon, in-progress rows use the accent tint, and cancelled rows are muted;
+  each status symbol has a localized accessible
   name and each row renders plain text.
 - Renderer snapshots are keyed by session id. A `todos.changed` event with an
   older or equal revision is ignored. Session activation and host recovery
