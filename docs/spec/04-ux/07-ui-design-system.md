@@ -274,6 +274,17 @@ animate for two 1.6-second cycles when mounted or entering the running state,
 then remain steady until the status changes. They must not continuously
 submit frames while the rest of the window is idle.
 
+The same bound covers every idle-reachable status indicator, because any
+one of them keeps the transparent macOS window dirty and therefore
+re-composited even when nothing is happening: the permission dot on a
+session waiting for approval, the plan-mode chip in the composer toolbar,
+and the warning dot on the backend banner each play two cycles and then
+hold a steady state that carries the meaning by itself (purple fill,
+planning-tinted icon, warning fill). Only indicators that describe work in
+flight — a streaming cursor, a running tool row, a recording microphone —
+may animate for as long as that work lasts. Reduced-motion mode disables
+all of them.
+
 ### 4.6 Tailwind CSS variable stub
 
 The following CSS custom properties stub is the canonical bridge between spec tokens and Tailwind classes. It is **not an app source file** — it documents the intended mapping for implementation.
