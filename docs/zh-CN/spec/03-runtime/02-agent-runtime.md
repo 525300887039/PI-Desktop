@@ -702,7 +702,9 @@ Stop / 运行时销毁。主 Agent 用 `TaskStop` 判断要不要取消；运行
 `SUBAGENT_OUTPUT_TRUNCATED` 和 `outputTruncated: true` 结算；有界的部分报告会保留在失败说明
 下，供诊断截断原因。后续以正常原因结束的委派回合会清除该标记并可以成功完成。
 父级终态错误还会中止残留委托、跳过续跑提示，并把会话恢复为空闲，这样
-“继续”不会变成 `AGENT_BUSY`（D352）。
+“继续”不会变成 `AGENT_BUSY`（D352）。 被系统中断的委托以
+`failed` 和 `SUBAGENT_PARENT_FAILED` 结算，保留基于历史的恢复资格，但不会自动重启。
+用户 Stop、TaskStop 与运行时销毁仍按不可恢复的取消处理。
 
 **可恢复的委托（ADR 0279）。** `Task` 接受一个可选的 `resume` 参数，携带同一会话中
 某个已结算委托的 `delegationId`。恢复后的委托是一个新的 `SubagentRun`，以该链此前的

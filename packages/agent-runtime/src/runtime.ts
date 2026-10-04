@@ -190,6 +190,7 @@ import {
 } from "./output-cap.js";
 import {
   composeSubagentSystemPrompt,
+  MAX_SUBAGENT_REPORT_CHARS,
   SubagentRun,
   SUBAGENT_LIST_TOOL_NAME,
   SUBAGENT_STOP_TOOL_NAME,
@@ -533,6 +534,8 @@ export type DelegationRecord = {
   /** True when `TaskStop` asked for this stop, so an aborted run reads as
    * `stopped` rather than `aborted`. */
   stopRequested: boolean;
+  /** System interruption preserves resume eligibility; explicit Stop wins. */
+  parentErrorInterrupted?: boolean;
   turns: number;
   toolCalls: number;
   lastToolName?: string;
@@ -4787,6 +4790,15 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
     result: SubagentRunResult,
   ): void {
     if (record.status !== "running") return;
+    if (result.status === "aborted" && record.parentErrorInterrupted && !record.stopRequested) {
+      const message = `The parent turn failed and interrupted this delegation. Continue it with Task(resume: "${record.delegationId}").`;
+      result = {
+        ...result,
+        status: "failed",
+        report: truncateTextWithMarker(`${message}\n\n${result.report}`, MAX_SUBAGENT_REPORT_CHARS, "\n[report truncated]\n"),
+        error: { code: "SUBAGENT_PARENT_FAILED", message, resumeId: record.delegationId },
+      };
+    }
     record.status =
       record.stopRequested && result.status === "aborted"
         ? "stopped"
@@ -4852,8 +4864,9 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
   }
 
   /** Abort every running delegation (user Stop, dispose, parent fatal error). */
-  private abortRunningDelegations(): void {
+  private abortRunningDelegations(parentErrorInterrupted = false): void {
     for (const record of this.runningDelegations()) {
+      record.parentErrorInterrupted = parentErrorInterrupted;
       record.abort();
     }
   }
@@ -4897,7 +4910,7 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
     this.acceptingSteering = false;
     this.steeringWaitAbort?.abort();
     this.retainPendingSteering();
-    this.abortRunningDelegations();
+    this.abortRunningDelegations(!this.runCancelled && !this.disposed);
     this.delegationWaitTargets = undefined;
     this.clearAgentActivity();
   }

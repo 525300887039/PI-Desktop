@@ -16554,3 +16554,21 @@ startup probing. Explicit selections keep their bin directory first. Missing
 installations still return `npm-unavailable` and retain native picker recovery.
 The executable integration fixture uses real isolated child processes and checks
 registry-only installation and credential isolation.
+
+
+#### E2E-CHAT-subagent-parent-error-resume
+
+- **Preconditions**: Built agent runtime and a loopback provider fixture; real
+  Agent, SDK transport, Task/TaskStop and delegate history. Host Read is a fixture.
+- **Steps**: Spawn two delegates, let each finish a Read, then leave both provider
+  streams active. Fail the parent request, send a later prompt with both resume
+  ids, and inspect the resumed requests. Repeat with user Stop and TaskStop.
+- **Expected**: Parent failure returns the session to idle; both delegates settle
+  failed with SUBAGENT_PARENT_FAILED and resume with their own prior Read context.
+  Explicit Stop/TaskStop produce aborted/stopped; both resume attempts are rejected
+  without starting another delegate. No automatic restart occurs.
+- **Specs linked**: 03-runtime/02-agent-runtime.md §5f; ADR 0279.
+- **Acceptance**: C, E, Quality. **Milestone**: Maintenance.
+- **Status**: Automated headless runtime/provider integration via
+  `node scripts/e2e-subagent-parent-error.mjs`; no real accounts or Desktop data.
+  Runtime tests separately cover exhausted parent 429 and Stop racing settlement.
