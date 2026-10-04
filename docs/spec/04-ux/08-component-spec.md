@@ -3049,7 +3049,7 @@ reasoning-level control.
   model therefore updates the draft Composer's available levels and binding
   default thinking level immediately; the persisted session keeps the same
   exact-model capability after materialization.
-- A new session whose catalog-matched default model supports reasoning starts
+- A new session whose inherited catalog-matched model supports reasoning starts
   with Thinking enabled at that model's stored default thinking level, clamped
   onto the enabled set. When the binding has no default, it falls back to the
   highest enabled level. An unmatched model starts at `off` unless its binding
@@ -3839,31 +3839,21 @@ saves the previewed order; Escape, pointer cancellation, focus loss, unmount or
 catalog changes cancel the drag. Buttons and form controls retain their actions.
 There is no separate drag handle. A focused card accepts Up/Down to move one visible row. Saving blocks further
 moves; a failed save shows an error and restores the accepted order. Late catalog
-responses cannot restore an earlier order. The default-model picker and Composer
-model groups follow the persisted order. Sorting changes neither the selected
+responses cannot restore an earlier order. Composer All models groups follow the persisted order. Sorting changes neither the selected
 default nor provider configuration. OAuth accounts remain in their separate section.
 
-1. **Defaults card** — a compact settings row reusing the shared
-   14px/16px row geometry; the Default model label sits above the provider name
-   and exact model ID, while a quiet Change action opens the picker without
-   duplicating the current value. The floating listbox is anchored to that
-   action rather than expanding the card in place: the surface portals to
-   `document.body` as a fixed layer so the panel's overflow cannot clip it,
-   groups model-level options by provider, marks the exact current entry, bounds
-   its own height so many configured models scroll instead of stretching the
-   card, flips above the trigger when there is no room below, and closes on
-   Escape, an outside press, or the trigger scrolling out of view.
-   A provider is named here the way the Composer model menu names it: an OAuth
-   row uses its non-secret account label when present, so two accounts of one
-   vendor do not collapse into identical group headings, summary lines, or
-   option names; the search matches the account label and the vendor name.
-   Global operating mode, command shell, and Enter-to-send live in the Settings
-   AI destination
-2. **Vendor accounts** — section title + primary Add account action and one
-   single-level list panel using the same row surface as AI services; one row
-   per OAuth account, including duplicate vendors, with account label, Edit,
-   Test connection, and Remove actions; the default model is edited in the
-   account dialog and selected from Defaults
+1. **Model selection** — chat models are selected in the Composer. Its first
+   menu has persistent search, up to three recent available provider/model pairs,
+   and an inline Other models disclosure. Without history, it shows all models.
+   New chats inherit the last actually used available model. Only accepted
+   message submission updates that preference; selection and reasoning changes
+   alone do not count as usage.
+   Existing chats keep their own binding. The fixed chat-default
+   picker and service Make default action are absent. The independent image
+   model row remains when image-generation candidates are configured.
+2. **Vendor accounts** — account labels, configured models, Test connection,
+   and Remove actions remain available through the shared service list and
+   account editor. The first binding remains the provider compatibility default.
 3. **Providers head** — section title + primary Add provider action; its
    button treatment matches Add account
 4. **Dialogs** — both the vendor-account edit dialog and the provider dialog

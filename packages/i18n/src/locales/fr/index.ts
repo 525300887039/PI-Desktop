@@ -529,6 +529,8 @@ export const fr = {
     "userMessage": "Message utilisateur",
     "assistantMessage": "Message de l'assistant",
     "model": "Modèle",
+    recentModels: "Récemment utilisés",
+    otherModels: "Autres modèles",
     "searchModels": "Rechercher des modèles",
     "noModelResults": "Aucun modèle correspondant",
     "modelBadgeReasoning": "raisonnement",
