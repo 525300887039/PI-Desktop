@@ -533,6 +533,8 @@ export const zhCN = {
     userMessage: "用户消息",
     assistantMessage: "助手消息",
     model: "模型",
+    recentModels: "最近使用",
+    allModels: "全部模型",
     searchModels: "搜索模型",
     noModelResults: "没有匹配的模型",
     modelBadgeReasoning: "推理",

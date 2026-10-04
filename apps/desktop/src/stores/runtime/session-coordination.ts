@@ -91,6 +91,7 @@ export function createSessionCoordination({
         if (!config) break;
         try {
           const result = await api.configureSession(sessionId, config);
+          get().rememberModel(result.session);
           if (runtime.pendingSessionConfigurations.get(sessionId) === config) {
             runtime.pendingSessionConfigurations.delete(sessionId);
           }
@@ -286,6 +287,7 @@ export function createSessionCoordination({
       draft: draftConfig,
       settings,
       providers: state.providers,
+      recentModels: state.recentModels,
     });
     const defaultProvider = state.providers.find(
       (provider) => provider.id === inherited.providerId,

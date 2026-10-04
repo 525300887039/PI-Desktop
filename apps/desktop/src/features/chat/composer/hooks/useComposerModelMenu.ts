@@ -1,3 +1,4 @@
+import { sameRecentModel } from "../../../../lib/recent-models";
 import type {
   Mode,
   ProviderPublic,
@@ -54,6 +55,7 @@ export function useComposerModelMenu({
   configureActiveSession,
 }: UseComposerModelMenuOptions) {
   const providers = useAppStore((s) => s.providers);
+  const recentModels = useAppStore((s) => s.recentModels);
   const imageGeneration = useAppStore((s) => s.settings?.imageGeneration);
   const imageGenerationModels = useAppStore((s) => s.settings?.imageGenerationModels);
   const imageGenerationCandidates = useMemo(
@@ -140,6 +142,15 @@ export function useComposerModelMenu({
         .filter((group) => group.models.length > 0),
     [providers, providerModels, imageGenerationCandidates],
   );
+  const recentEntries = useMemo(() => {
+    const entries = modelGroups.flatMap(group => group.models.map(model => ({ provider: group.provider, model })));
+    return (recentModels ?? []).flatMap(recent => {
+      const entry = entries.find(entry => sameRecentModel(recent, {
+        providerId: entry.provider.id, modelId: entry.model.modelId,
+      }));
+      return entry ? [entry] : [];
+    }).slice(0, 3);
+  }, [modelGroups, recentModels]);
   const queryNeedle = query.trim().toLowerCase();
   const filteredModelGroups = useMemo(
     () =>
@@ -347,6 +358,7 @@ export function useComposerModelMenu({
     modelSearchRef,
     modelListRef,
     modelGroups: filteredModelGroups,
+    recentEntries,
     flatModels,
     thinkingMenuLevels,
     showView,

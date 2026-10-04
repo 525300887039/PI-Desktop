@@ -43,6 +43,7 @@ export const TOOLBAR_PROPS = {
     modelListRef: { current: null },
     thinkingListRef: { current: null },
     modelGroups: [],
+    recentEntries: [],
     thinkingMenuLevels: [],
     showView: noop,
     selectModel: noop,

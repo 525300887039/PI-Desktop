@@ -1,9 +1,12 @@
+import { composerModelDisplayName, sameComposerModelId } from "../../../lib/composer-models";
+import { providerDisplayName } from "../../../lib/provider-display";
 import type { TFunction } from "i18next";
 import type { ReactNode } from "react";
 import { ComposerModelList } from "./ComposerModelList";
 import { AnchoredMenu } from "../../../components/settings/AnchoredMenu";
 import {
   IconBot,
+  IconCheck,
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
@@ -52,6 +55,7 @@ export function ComposerModelPicker({
     modelSearchRef,
     modelListRef,
     modelGroups,
+    recentEntries,
     thinkingMenuLevels,
     showView,
     selectModel,
@@ -108,6 +112,28 @@ export function ComposerModelPicker({
       {view === "root" ? (
         <div className="composer-menu-root" ref={rootMenuRef}>
           {rootActions}
+          {recentEntries.length > 0 ? (
+            <div role="group" aria-label={t("chat.recentModels")}>
+              <div className="composer-model-group-label">{t("chat.recentModels")}</div>
+              {recentEntries.map(({ provider, model }) => (
+                <button
+                  key={`${provider.id}:${model.modelId}`}
+                  type="button"
+                  className="composer-menu-entry"
+                  role="menuitemradio"
+                  aria-checked={provider.id === selectedProviderId && sameComposerModelId(model.modelId, selectedModelId ?? "")}
+                  title={`${providerDisplayName(provider)} · ${model.modelId}`}
+                  onClick={() => void selectModel(provider, model.modelId)}
+                >
+                  <span className="composer-menu-entry-label">{composerModelDisplayName(provider, model.modelId)}</span>
+                  <span className="composer-menu-entry-value">{providerDisplayName(provider)}</span>
+                  {provider.id === selectedProviderId && sameComposerModelId(model.modelId, selectedModelId ?? "") ? (
+                    <IconCheck size={14} aria-hidden="true" />
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <button
             type="button"
             className="composer-menu-entry"
@@ -116,7 +142,7 @@ export function ComposerModelPicker({
             onClick={() => showView("model")}
           >
             <IconBot size={14} aria-hidden="true" />
-            <span className="composer-menu-entry-label">{t("chat.model")}</span>
+            <span className="composer-menu-entry-label">{t("chat.allModels")}</span>
             <span className="composer-menu-entry-value" title={modelLabel}>{modelLabel}</span>
             <IconChevronRight size={14} aria-hidden="true" />
           </button>

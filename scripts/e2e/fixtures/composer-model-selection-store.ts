@@ -1,8 +1,11 @@
+import { rememberModelInList, saveRecentModels } from "../../../apps/desktop/src/lib/recent-models";
+import type { RecentModel } from "../../../apps/desktop/src/lib/recent-models";
 import { useSyncExternalStore } from "react";
 import type { ModelInfo, ProviderPublic } from "@pi-desktop/shared";
 
 type StoreState = {
   providers: ProviderPublic[];
+  recentModels: RecentModel[];
   providerModels: Record<string, ModelInfo[]>;
   settings: undefined;
   loadProviderModels: (providerId: string) => Promise<void>;
@@ -12,6 +15,7 @@ type StoreState = {
 const listeners = new Set<() => void>();
 let state: StoreState = {
   providers: [],
+  recentModels: [],
   providerModels: {},
   settings: undefined,
   loadProviderModels: async () => {},
@@ -39,5 +43,11 @@ const useAppStore = Object.assign(
     },
   },
 );
+
+export function rememberSelectedModel(model: RecentModel) {
+  const recentModels = rememberModelInList(useAppStore.getState().recentModels, model);
+  saveRecentModels(recentModels);
+  useAppStore.setState({ recentModels });
+}
 
 export { useAppStore };

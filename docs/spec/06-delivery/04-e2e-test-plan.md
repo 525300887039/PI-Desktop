@@ -16676,3 +16676,21 @@ preload, API normalization, store events, ToolRow, and Markdown renderer.
 No provider credentials or paid model calls are required. The fixture ends at
 work-panel file-request routing; artifact bytes are verified from the real
 host-created files. The full app's file-preview viewer is covered separately.
+
+
+## Composer recent chat models
+
+- Select four distinct configured chat models across providers. Open the combined
+  model menu: exactly the latest three available pairs appear in recency order,
+  with provider labels. Select an older recent row and verify it moves first.
+- Open All models, search and choose using keyboard navigation. Verify thinking
+  defaults still follow the selected binding and manual same-model levels survive.
+- Create a new chat: it inherits the latest selection. Reload local preferences
+  and create another chat: the same binding is restored. An existing chat keeps
+  its own binding; rejected configuration does not replace the recent selection.
+- Disable/remove a provider or model and mark a model for image generation:
+  unavailable history entries are skipped for inheritance and recent menu rows.
+- Settings contains no fixed chat-default picker or Make default service action;
+  image model selection and provider configuration remain available.
+- Coverage: recent-models.test.mjs, recent-model-flow.test.mjs,
+  default-model-picker.test.mjs, and scripts/e2e-composer-model-selection.mjs.

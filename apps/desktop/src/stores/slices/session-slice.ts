@@ -576,6 +576,7 @@ export function createSessionSlice({
             messages: selectedMessages,
             settings: get().settings,
             providers: get().providers,
+            recentModels: get().recentModels,
           });
           if (pin.providerId && pin.modelId) {
             set((state) => ({
@@ -759,6 +760,7 @@ export function createSessionSlice({
               config.permissionMode ?? state.draftConfiguration?.permissionMode,
           },
         }));
+        get().rememberModel(config);
         return;
       }
       if (get().pendingPlans[sessionId]?.status === "pending") return;
@@ -788,6 +790,7 @@ export function createSessionSlice({
       );
       runtime.pendingSessionConfigurations.delete(sessionId);
       const result = await api.configureSession(sessionId, payload);
+      get().rememberModel(result.session);
       set((state) => ({
         sessions: state.sessions.map((session) =>
           session.id === sessionId

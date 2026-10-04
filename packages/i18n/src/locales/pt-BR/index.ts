@@ -527,6 +527,8 @@ export const ptBR = {
     userMessage: "Mensagem do usuário",
     assistantMessage: "Mensagem do assistente",
     model: "Modelo",
+    recentModels: "Usados recentemente",
+    allModels: "Todos os modelos",
     searchModels: "Pesquisar modelos…",
     noModelResults: "Nenhum modelo encontrado",
     modelBadgeReasoning: "Raciocínio",

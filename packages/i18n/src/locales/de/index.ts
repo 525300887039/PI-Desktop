@@ -529,6 +529,8 @@ export const de = {
     "userMessage": "Benutzernachricht",
     "assistantMessage": "Assistentennachricht",
     "model": "Modell",
+    recentModels: "Zuletzt verwendet",
+    allModels: "Alle Modelle",
     "searchModels": "Modelle suchen",
     "noModelResults": "Keine passenden Modelle",
     "modelBadgeReasoning": "Begründung",
