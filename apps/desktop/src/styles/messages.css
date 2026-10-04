@@ -1727,11 +1727,13 @@
 }
 
 .message-attachments {
-  display: flex;
+  display: inline-flex;
   max-width: 100%;
   flex-wrap: wrap;
   gap: 5px;
-  margin-bottom: 7px;
+  /* The chips continue the body line instead of heading it. */
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
 .message-row.user .message-attachments {

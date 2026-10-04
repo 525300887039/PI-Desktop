@@ -231,6 +231,32 @@ test("a user message shows the reference as its body chip, not a second block", 
   assert.doesNotMatch(html, /pi-desktop:\/\/session\/session-a/, "the raw link is replaced by the chip");
 });
 
+test("an extra attachment chip continues the body text instead of heading it", () => {
+  locale = "en";
+  const withImage = {
+    ...userMessage,
+    content: "look at this",
+    attachments: [{ kind: "image", name: "shot.png", ref: "attachments/abc" }],
+  };
+  const html = renderRow(withImage);
+  const bodyAt = html.indexOf("message-user-text");
+  assert.notEqual(bodyAt, -1, "the body text container is missing");
+  assert.doesNotMatch(
+    html.slice(0, bodyAt),
+    /message-attachments/,
+    "no attachment block above the body",
+  );
+  assert.match(
+    html.slice(bodyAt),
+    /class="message-attachments"/,
+    "the chip lives inside the body text container",
+  );
+  assert.ok(
+    html.indexOf("look at this") < html.indexOf("message-attachments"),
+    "the body text comes before its attachment chip",
+  );
+});
+
 test("a referenced conversation is not rendered as a file chip", () => {
   locale = "en";
   const withFile = {
