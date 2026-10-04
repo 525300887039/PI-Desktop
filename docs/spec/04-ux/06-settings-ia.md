@@ -78,9 +78,9 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 - **Cloud sync / 云同步** is a regular `System` / `系统` destination
   available to every user in every build: its rail row, page, and
   settings-search hits never depend on developer mode and never fall back to
-  General. It is still Experimental, so the rail row and page title carry the
-  Experimental badge (`settings.configSync.experimental`). Nothing about the
-  sync behavior itself changes.
+  General. It ships as a stable destination, so neither the rail row nor the
+  page title carries an Experimental badge, and nothing about the sync
+  behavior itself changes.
 - **Remote Hosts / 远程主机** is a developer-only, Experimental destination: its
   rail row, its page, and its settings-search hits exist only while
   `AppSettings.developerMode` is `true`. With developer mode off the row is

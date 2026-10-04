@@ -9227,8 +9227,8 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   Developer mode starts off so the public destination is exercised as shipped.
 - **Steps:** 1) Open Settings with developer mode off; confirm Cloud sync is
   present in the rail and returned by settings search, then open it and
-  confirm the Experimental badge appears beside the rail row and page title.
-  2) Toggle developer mode on and off and confirm the destination stays
+  confirm neither the rail row nor the page title carries an Experimental
+  badge. 2) Toggle developer mode on and off and confirm the destination stays
   reachable either way. 3) Enter the fixture URL,
   device label, directory, and backup password. 4) Run the capability test and
   confirm it uses temporary objects. 5) Select provider/MCP/skill categories
@@ -9254,9 +9254,9 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   WebDAV app password, while password fields themselves remain blank and no
   vault password is written to renderer storage.
 - **Expected:** Cloud sync is reachable in every build without developer mode,
-  keeps its Experimental badge beside the rail row and page title, and
-  neither its availability nor its behavior changes when developer mode is
-  toggled. Strict mode refuses
+  carries no Experimental badge on the rail row or page title, and neither its
+  availability nor its behavior changes when developer mode is toggled.
+  Strict mode refuses
   unreliable conditional writes. The explicit
   compatibility mode accepts only a server that proves bounded directory
   listing, explains that it is not atomic CAS, and retains per-device tips for
@@ -16256,9 +16256,10 @@ the latest destination. These assertions measure work counts, not device FPS.
 - Automated coverage: `pnpm test:e2e:settings-scroll` mounts the production
   SettingsPage, store, translations, and built CSS in isolated Electron. Only
   preload data is stubbed; search navigation uses SearchDialog's public store
-  entry points. It also checks Cloud sync visibility without developer mode,
-  the Experimental badges, and the fallback to General. This covers renderer
-  interaction, not host persistence or the full global-search dialog.
+  entry points. It also checks that Cloud sync has no developer-mode gate and
+  no Experimental badge, that Remote hosts keeps its badge, and the fallback
+  to General. This covers renderer interaction, not host persistence or the
+  full global-search dialog.
 
 ### E2E-SCHEDULED-dispatch
 

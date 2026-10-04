@@ -39,7 +39,8 @@
 | D639 | models.dev 拥有已发布的聊天模型元数据 | **就聊天元数据而言，取代 D136 / D266 和 ADR `pi-ai-core-0991-authority`：随应用打包并可显式刷新的 models.dev 目录提供已发布的聊天模型上下文 / 输出上限、模态、推理元数据、名称和价格。优先采用所选官方发布方；其没有记录时，只有安全且无歧义的匹配才采用其他发布方，否则保留通用元数据。仓库中的预设身份是优先集合；不要声称存在未经证实的 39 家固定名单。实时端点 / OAuth 发现仍决定可选模型 ID。Pi 仍负责 OAuth、wire 身份、传输和有类型的非聊天操作，但不再为聊天模型提供同档模型的上限、推理能力或价格。明确的用户绑定覆盖仍具权威性。不向 models.dev 发送凭据；不改主机模式 / 协议或持久化。见 ADR `models-dev-catalog-authority` 与 E2E-162 / E2E-MODEL-catalog-window-correction-reaches-saved-bindings。** | Pi 同档模型默认值曾把 GPT 模型的上下文窗口设为 272,000；所选 models.dev 记录实际发布的是 1,050,000，导致设置页显示和运行时上下文预算错误。 |
 | D640 | 用户 MCP 工具保持常规审批路径 | **host-core 将 `mcp_<serverId>_<tool>` 调用视为 `medium` 风险：在 `ask` 与 `accept-edits` 下每次调用都显示审批卡片（"MCP server tool requires approval"），允许一次与本会话允许保持原有范围（单次调用 / 该会话内同一工具名），`auto` 不显示卡片直接执行，Plan/Goal 仍然拒绝。MCP 服务器对自身工具声明的标注或风险值被忽略，绝不降低审批路径。分发、只读模式处理与 `mcp_` 命名空间不变；不改主机协议或持久化。见 ADR `mcp-tool-approval-risk` 与 E2E-MCP-tool-requires-approval。** | MCP 工具此前按 `low` 风险自动放行，已配置的服务器在 `ask` 下可以不经提示写文件、访问网络或执行命令。配置服务器意味着同意启动它，而不是同意其不透明工具的每一个操作。 |
 | D641 | 自定义端点 API 格式优先级 | **自定义端点始终优先使用 provider 行上保存的 `apiStyle`，再考虑模型目录适配器 API。对于具名与 OAuth provider，如果已发布配置要求不同传输，仍可沿用模型级 wire API 固定项。这可确保用户为自定义 endpoint 选择的格式不会被静默覆盖，同时保留 OpenCode Go Responses 模型等特定路由。不改变持久化格式或协议。见 E2E-005E 与 issue #1313。** | 发布方的适配器默认值不应把请求从用户已选择的自定义网关格式静默重定向。 |
-| D642 | 云同步是对所有用户开放的实验性目的地 | **移除设置中 `sync` 目的地的开发者模式与打包构建门控：其导轨行、页面和设置搜索命中在任何构建中对所有用户存在，已保存的 `sync` 标签页也不再回落到常规。远程主机保留这两道门控和它自己的徽章。该目的地继续在导轨行与页面标题上保留实验性徽章；同步行为、协议、Host schema 与持久化数据均不变。见 `04-ux/06-settings-ia.md` 与 E2E-CONFIG-SYNC-webdav-portable-configuration。** | 加密 WebDAV 备份是应用唯一的多设备配置路径，而开发者模式门控让需要它的用户无法发现该功能。 |
+| D642 | 云同步是对所有用户开放的实验性目的地 *(由 D643 修订)* | **移除设置中 `sync` 目的地的开发者模式与打包构建门控：其导轨行、页面和设置搜索命中在任何构建中对所有用户存在，已保存的 `sync` 标签页也不再回落到常规。远程主机保留这两道门控和它自己的徽章。该目的地继续在导轨行与页面标题上保留实验性徽章；同步行为、协议、Host schema 与持久化数据均不变。见 `04-ux/06-settings-ia.md` 与 E2E-CONFIG-SYNC-webdav-portable-configuration。** | 加密 WebDAV 备份是应用唯一的多设备配置路径，而开发者模式门控让需要它的用户无法发现该功能。 |
+| D643 | 云同步不再带实验性徽章 | **修订 D642：设置中的 `sync` 目的地不再有 `experimentalBadgeKey`，各内置语言包中的 `settings.configSync.experimental` 键也已删除。云同步在任何构建中对所有用户保持可用。远程主机保留自己的徽章和两道门控。同步行为、协议、Host schema 与持久化数据均不变。见 `04-ux/06-settings-ia.md` 与 E2E-CONFIG-SYNC-webdav-portable-configuration。** | 云同步是应用已发布的多设备路径，实验性标签已不再描述它，只会让该目的地看起来尚未完成。 |
 | D450 | 签名的 macOS GitHub Release | **修订 D078 / ADR 0022：GitHub tag 发布使用身份 `Developer ID Application: XingYu Liu (DUV63RKYTW)` / 团队 `DUV63RKYTW`，通过 Actions 密钥（`CSC_LINK`、`CSC_KEY_PASSWORD`、`APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD`、`APPLE_TEAM_ID`）对 macOS DMG/ZIP 做 Developer ID 签名、`notarytool` 公证、装订和 Gatekeeper 校验；缺少密钥则失败。无证书的本地未签名打包仍可用。`workflow_dispatch` 仅可把 `sign_macos: false` 用于未签名调试产物。打包的 macOS 走应用内 `electron-updater`（ZIP + 合并后的 `latest-mac.yml`）；Linux deb/rpm 与 Windows 便携版 ZIP 仍为通知并打开发布页。禁止 afterPack/afterSign adhoc 签名（ADR 0278）。** | 正式 DMG 应无需 Gatekeeper 警告即可打开，已签名 macOS 安装可下载并重启到新 tag。见 ADR 0289、E2E-196c、E2E-067A。 |
 
 ## B. 辅助实现默认值
@@ -5220,8 +5221,18 @@ Markdown 源码，不是 `text/html` 负载；对禁用行内 HTML 的外部编�
 - D642 移除设置中 `sync` 目的地的开发者模式与打包构建门控：其导轨行、页面和设置搜索
   命中在任何构建中对所有用户可用，已保存的 `sync` 标签页也不再回落到常规。远程主机
   保留这两道门控。
-- 该目的地继续在导轨行和页面标题上保留实验性徽章；同步行为、协议、Host schema 与
-  持久化数据均不变。
+- 该目的地当时在导轨行和页面标题上保留实验性徽章
+  （已由 D643 修订）。
 - 由 `apps/desktop/test/settings-developer-only-destinations.test.mjs` 与
   `pnpm test:e2e:settings-scroll` 的云同步探针覆盖。见 `04-ux/06-settings-ia.md` 与
   E2E-CONFIG-SYNC-webdav-portable-configuration。
+
+## 2026-10-04 —— 云同步不再带实验性徽章（D643）
+
+- D643 修订 D642：设置中的 `sync` 目的地不再有 `experimentalBadgeKey`，
+  各内置语言包中的 `settings.configSync.experimental` 键也已删除。云同步在任何构建、
+  对所有用户都保持可用。
+- 远程主机保留自己的徽章和两道门控。同步行为、协议、Host schema 与持久化数据均不变。
+- 由 `apps/desktop/test/settings-developer-only-destinations.test.mjs`、
+  `apps/desktop/test/config-sync-settings.test.mjs` 中的徽章断言，以及
+  `pnpm test:e2e:settings-scroll` 的云同步探针覆盖。
