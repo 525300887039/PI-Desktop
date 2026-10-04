@@ -12129,7 +12129,11 @@ are withdrawn with ADR 0165.
      specified model, not the session model; its delegation node shows the
      effective model id immediately after the subagent name.
   4. If the model is not configured or not enabled for delegation, the Task
-     returns a tool error listing available models.
+     returns a tool error listing available models. With an empty override
+     catalog, the error, system summary and Task description name the Settings
+     → Models / model Advanced / "Available for AI delegation" / save path.
+     A denied guessed override sends no child request; retrying with `model`
+     omitted still uses the definition default or inherits the parent model.
   5. Resolution priority is Task.model parameter → definition frontmatter pin →
      session model.
   6. On-demand resolution succeeds for models enabled in provider settings via
@@ -12151,6 +12155,7 @@ are withdrawn with ADR 0165.
 - **Milestone**: M6+
 - **Status**: Partially automated. `pnpm test:e2e:subagent-models` drives the
   built sidecar over real NDJSON and a local deterministic SSE model fixture:
+  empty-catalog guidance and inheritance after a denied override,
   private cross-definition rejection, own-pin echo, normal pin use, allowed override priority,
   on-demand authorization without runtime rebuild, exact-session inheritance, and revocation across two
   prompts all pass. Runtime unit tests cover the same selection gates and the
