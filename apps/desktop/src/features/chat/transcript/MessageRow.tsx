@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
-import type { UiMessage } from "@pi-desktop/shared";
+import type { MessageAttachment, UiMessage } from "@pi-desktop/shared";
 import { useOpenChatFileRef } from "../../../hooks/use-preview-target";
 import { splitChatText } from "../../../lib/chat-links";
 import { useAppStore } from "../../../stores/app-store";
@@ -30,7 +30,6 @@ import {
   LinkifiedText,
   MessageAttachmentImage,
   MessageTimestamp,
-  SessionRefChip,
 } from "./shared";
 import {
   useChatTextActions,
@@ -117,7 +116,12 @@ export const MessageRow = memo(function MessageRow({
         .filter((segment): segment is { kind: "target"; text: string; label: string; target: { kind: "file"; path: string } } => segment.kind === "target" && segment.target.kind === "file")
         .map((segment) => segment.target.path),
     );
-    return attachments.filter((attachment) => !inline.has(attachment.ref));
+    // A conversation reference is already its chip in the body link, so it
+    // needs no second block; only a file the body does not show inline does.
+    return attachments.filter(
+      (attachment): attachment is MessageAttachment & { kind: "file" | "image" } =>
+        attachment.kind !== "session" && !inline.has(attachment.ref),
+    );
   }, [message.attachments, message.content, workspaceRoot]);
   const beginEdit = async () => {
     if (!editableUserMessage || isRunning || loadingEdit) return;
@@ -265,10 +269,6 @@ export const MessageRow = memo(function MessageRow({
                           attachment={attachment}
                           onOpenFile={openFileRef}
                         />
-                      ) : attachment.kind === "session" ? (
-                        <span key={`${attachment.ref}:${attachment.name}`} role="listitem">
-                          <SessionRefChip attachment={attachment} />
-                        </span>
                       ) : (
                         <span
                           key={`${attachment.ref}:${attachment.name}`}
