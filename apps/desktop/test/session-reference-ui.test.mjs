@@ -155,8 +155,17 @@ test("a referenced conversation renders as a chip naming its own target", () => 
   assert.match(html, /data-session-id="session-a"/);
   assert.match(
     read("../src/features/chat/transcript/shared.tsx"),
-    /onClick=\{\(\) => void selectSession\(sessionId\)\.catch\(\(\) => undefined\)\}/,
+    /const open = \(\) => void selectSession\(sessionId\)\.catch\(\(\) => undefined\)/,
     "activating the chip opens the referenced conversation",
+  );
+  // The chip is a span, not a <button>, because Chromium never fragments a
+  // button across lines and an atomic chip leaves the line it left blank.
+  assert.match(html, /role="button"/, "the chip is announced as a button");
+  assert.match(html, /tabindex="0"/, "the chip is reachable from the keyboard");
+  assert.match(
+    read("../src/features/chat/transcript/shared.tsx"),
+    /if \(event\.key !== "Enter" && event\.key !== " "\) return;\s*\n\s*event\.preventDefault\(\);\s*\n\s*open\(\);/,
+    "Enter and Space activate the chip, the way a button does",
   );
   assert.ok(
     html.includes(`${catalogs.en.chat.sessionReference} · Nightly review`),

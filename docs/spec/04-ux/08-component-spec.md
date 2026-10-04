@@ -4242,9 +4242,14 @@ Conversation overflow                    Composer draft (unsent)
   its tile is sized and aligned by that leading so it covers exactly one line of
   message text: the label sits on the line's baseline instead of poking out of
   the composer's compact box. The 11.5px/20px metric is draft-only.
-- The chip is a button with a catalog-built accessible name and a tooltip
-  naming the conversation it opens; it is keyboard-activatable and leaves the
-  surrounding selectable message text intact.
+- A conversation reference is an inline run rather than an atomic chip: it breaks
+  with the line it sits on, so a reference too wide for the line continues on the
+  next line and leaves the line it started on filled. Chromium never fragments a
+  `<button>`, so this chip carries the button role and its Enter and Space
+  behaviour on an activatable span.
+- The chip carries the button role with a catalog-built accessible name and a
+  tooltip naming the conversation it opens; it is keyboard-activatable and leaves
+  the surrounding selectable message text intact.
 - `pi-desktop://` is not yet an operating-system protocol handler; opening a
   link from outside the app is a separate change (issue #1324, option A). This
   section covers the in-app reference.
