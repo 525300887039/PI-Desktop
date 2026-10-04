@@ -349,12 +349,14 @@ export function buildProviderModel(
     : undefined;
   const autoAdaptiveThinking =
     catalogModel.thinkingProtocol === undefined && requiresAdaptiveThinking(catalogModel);
-  // A custom model id on the Anthropic wire shape has no catalog reasoning
-  // options to derive from (#926): relays rename Claude models, so the id is
-  // the only signal. Default effort-only adaptive thinking on for a Claude id;
-  // a per-model compat record still overrides it for non-Claude backends.
+  // A generic model projection can still be present when the catalog misses a
+  // model (#926). With no protocol or reasoning options, a Claude id on the
+  // Anthropic wire is the remaining signal for adaptive thinking.
   const customClaudeId =
-    !provider.modelConfig &&
+    catalog?.source === "generic" &&
+    catalogModel.reasoning === true &&
+    catalogModel.thinkingProtocol === undefined &&
+    (catalogModel.reasoningOptions?.length ?? 0) === 0 &&
     binding.api === "anthropic-messages" &&
     /claude/i.test(provider.modelId);
   // OpenAI-compatible gateways are not guaranteed to implement the newer
@@ -379,10 +381,12 @@ export function buildProviderModel(
         ? {
             ...(catalogModel.compat ?? {}),
             ...(thinkingProtocolCompat ?? {}),
-            // A per-model compat record keeps precedence over the id-derived
-            // default so a non-Claude backend behind a Claude-shaped id can
-            // opt out explicitly.
-            forceAdaptiveThinking: catalogModel.compat?.forceAdaptiveThinking ?? true,
+            // Explicit protocol selection wins, followed by per-model compat;
+            // the Claude-id heuristic supplies only the missing default.
+            forceAdaptiveThinking:
+              thinkingProtocolCompat?.forceAdaptiveThinking ??
+              catalogModel.compat?.forceAdaptiveThinking ??
+              true,
           }
         : thinkingProtocolCompat
           ? { ...(catalogModel.compat ?? {}), ...thinkingProtocolCompat }
