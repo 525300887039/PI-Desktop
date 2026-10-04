@@ -1,10 +1,7 @@
-import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { portalToBody } from "../../../lib/portal-visibility";
+import { useCallback, useRef, type RefObject } from "react";
+import { ImageHoverCard } from "../../../components/ImageHoverCard";
 import type { ComposerImagePreviewController } from "./hooks/useComposerImagePreview";
-import { useComposerImageHover, type ComposerImageHoverTarget } from "./hooks/useComposerImageHover";
-
-/** Distance between the hovered chip and its preview card. */
-const PREVIEW_GAP = 8;
+import { useComposerImageHover } from "./hooks/useComposerImageHover";
 
 /**
  * Hover preview for inline image chips. It stays a read-only card: clicking the
@@ -26,38 +23,12 @@ export function ComposerImageHover({ controller, editorRef }: {
   );
   const hover = useComposerImageHover(editorRef, idForToken);
   // The modal already shows the image; a card behind it would be noise.
-  return <ComposerImageHoverCard controller={controller} target={controller.preview ? null : hover} />;
-}
-
-function ComposerImageHoverCard({ controller, target }: {
-  controller: ComposerImagePreviewController;
-  target: ComposerImageHoverTarget | null;
-}) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [placement, setPlacement] = useState<"above" | "below">("above");
+  const target = controller.preview ? null : hover;
   const source = target ? controller.sources?.get(target.id) : undefined;
-  const src = source?.status === "ready" ? source.src : null;
-  useLayoutEffect(() => {
-    const card = cardRef.current;
-    if (!target || !card) return;
-    // A chip on the first line has no room above it.
-    setPlacement(target.anchor.top - card.offsetHeight - PREVIEW_GAP < 0 ? "below" : "above");
-  }, [target, src]);
-  if (!target || !src) return null;
-  return portalToBody(
-    <div
-      ref={cardRef}
-      className="composer-image-hover"
-      data-placement={placement}
-      role="presentation"
-      style={{
-        left: target.anchor.left + target.anchor.width / 2,
-        top: placement === "above"
-          ? target.anchor.top - PREVIEW_GAP
-          : target.anchor.bottom + PREVIEW_GAP,
-      }}
-    >
-      <img src={src} alt="" draggable={false} />
-    </div>,
+  return (
+    <ImageHoverCard
+      src={source?.status === "ready" ? source.src : null}
+      anchor={target?.anchor ?? null}
+    />
   );
 }

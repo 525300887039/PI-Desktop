@@ -345,9 +345,11 @@ test("every transcript surface that names a file opens that item", () => {
     /const \{ fileMenu, openFileMenu, closeFileMenu \} = useChatFileMenu\(\)/,
   );
   assert.match(shared, /onContextMenu=\{\(event\) => openFileMenu\(event, \{ path \}\)/);
+  // An image attachment is the same chip as any other attachment now, so that
+  // chip carries the file menu and the shared preview card hangs off it.
   assert.match(
     shared,
-    /onContextMenu=\{\(event\) => openFileMenu\(event, \{ path: attachment\.ref \}\)/,
+    /<ImageHoverCard src=\{dataUrl\} anchor=\{anchor\} onDismiss=\{dismiss\} \/>/,
   );
   assert.match(shared, /<ContextMenu state=\{fileMenu\} onClose=\{closeFileMenu\} \/>/);
   // A tool row's summary and a tool result's file and match lists name files

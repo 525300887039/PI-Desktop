@@ -1,27 +1,3 @@
-/* Read-only hover card for an inline image chip in the draft. */
-.composer-image-hover {
-  position: fixed;
-  z-index: 55;
-  box-sizing: border-box;
-  padding: 3px;
-  background: var(--ds-bg-elevated);
-  border: 1px solid var(--ds-border-default);
-  border-radius: var(--radius-md);
-  box-shadow: var(--ds-shadow-dialog);
-  pointer-events: none;
-}
-
-.composer-image-hover[data-placement="above"] { transform: translate(-50%, -100%); }
-.composer-image-hover[data-placement="below"] { transform: translate(-50%, 0); }
-
-.composer-image-hover img {
-  display: block;
-  max-width: min(240px, 40vw);
-  max-height: min(240px, 40dvh);
-  border-radius: var(--radius-2xs);
-  object-fit: contain;
-}
-
 .composer-image-preview {
   box-sizing: border-box;
   position: fixed;
