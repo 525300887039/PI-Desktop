@@ -122,6 +122,11 @@ globalThis.composerModelSelectionProbe = async () => {
   await settle();
   const expandedRows = document.querySelectorAll(".composer-model-list [role=menuitemradio]");
   if (expandedRows.length !== 4) throw new Error("Expanded models must appear once in the same list");
+  const recentStyle = getComputedStyle(expandedRows[0]);
+  const otherStyle = getComputedStyle(expandedRows[3]);
+  if (recentStyle.fontSize !== otherStyle.fontSize || recentStyle.fontWeight !== otherStyle.fontWeight) {
+    throw new Error(`Model typography differs: recent ${recentStyle.fontSize}/${recentStyle.fontWeight}, other ${otherStyle.fontSize}/${otherStyle.fontWeight}`);
+  }
   disclosure.click();
   await settle();
   const search = document.querySelector<HTMLInputElement>(".composer-model-search input")!;

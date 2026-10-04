@@ -57,7 +57,7 @@ export function ComposerModelList({
               </label>
               <div className="composer-model-list" ref={modelListRef}>
                 {recentEntries.length > 0 ? (
-                  <div role="group" aria-label={t("chat.recentModels")}>
+                  <div className="composer-model-group" role="group" aria-label={t("chat.recentModels")}>
                     <div className="composer-model-group-label">{t("chat.recentModels")}</div>
                     {recentEntries.map(({ provider, model }, index) => {
                       const active = provider.id === selectedProviderId && sameComposerModelId(model.modelId, selectedModelId ?? "");
