@@ -271,6 +271,7 @@ export const en = {
     slashGroupApp: "App commands",
     slashGroupPlugins: "Plugin commands",
     slashGroupExtensions: "Extension commands",
+    slashGroupMcp: "MCP",
     slashGroupSkills: "Skills",
     slashEmpty: "No matching commands",
     slashCommandSourceUnavailable: "Command list unavailable, so nothing was sent. Try again.",
@@ -2721,6 +2722,7 @@ importConfirm: "Imported extensions run inside the agent process with the same a
     },
   },
   errors: {
+    COMPOSER_MCP_UNAVAILABLE: "The selected MCP server is disconnected or unavailable in this project. Reconnect it and select it again.",
     HOST_UNAVAILABLE: "The local service is unavailable",
     MODEL_NOT_CONFIGURED: "This model isn't set up, or the AI provider doesn't offer it.",
     TOOL_DENIED: "Permission was denied for this action",
