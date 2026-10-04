@@ -7845,14 +7845,16 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
      removable leaf-name chip and no scratch absolute path occupies the
      textarea. Hover/focus chips to inspect their full paths, remove one, then
      send the prompt and inspect the session message's attachment metadata.
-     Before sending, verify image thumbnails sit left-aligned above and outside
-     the input shell. Replacing/undoing all text must retain the images; image-only
-     drafts must survive session switching and retain submission metadata.
-     Mount the complete Composer: click Send for image-only input, verify
-     attachment delivery and successful clearing, and immediately reject a
-     text-plus-image send to verify full draft restoration. In a narrow pane,
-     add 20 images, scroll to the last one and remove it without losing others.
-     Inspect the thumbnail and open it with click, Enter, and
+    Before sending, verify each image is a compact inline chip in the draft and
+    that hovering it reveals its preview card. Replacing all text removes the
+    inline image chips while undo restores them; image-only drafts must survive
+    session switching and retain submission metadata.
+    Mount the complete Composer: click Send for image-only input, verify
+    attachment delivery and successful clearing, and immediately reject a
+    text-plus-image send to verify full draft restoration. In a narrow pane,
+    prefill 20 images, confirm 20 inline chips inside the composer, and remove
+    one without losing the others.
+    Inspect the chip and open it with click, Enter, and
      Space. Confirm a centered modal preview opens, the work panel stays
      unchanged, and the draft is neither edited nor sent. Check small images
      stay at natural size, wide images fit without distortion, zoom/reset and

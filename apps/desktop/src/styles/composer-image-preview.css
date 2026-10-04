@@ -1,61 +1,25 @@
-.composer-image-attachments {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 6px;
+/* Read-only hover card for an inline image chip in the draft. */
+.composer-image-hover {
+  position: fixed;
+  z-index: 55;
   box-sizing: border-box;
-  max-height: min(212px, 30dvh);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  padding: 3px;
+  background: var(--ds-bg-elevated);
+  border: 1px solid var(--ds-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ds-shadow-dialog);
+  pointer-events: none;
 }
 
-.composer-image-attachment { position: relative; width: 88px; height: 88px; }
-.composer-image-attachment-open {
-  box-sizing: border-box;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  overflow: hidden;
-  color: var(--ds-text-secondary);
-  background: var(--ds-bg-elevated);
-  border: 1px solid var(--ds-border-default);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-}
-.composer-image-attachment-open img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.composer-image-attachment-remove {
-  position: absolute;
-  right: -5px;
-  top: -5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  opacity: 0;
-  color: var(--ds-text-secondary);
-  background: var(--ds-bg-elevated);
-  border: 1px solid var(--ds-border-default);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-}
-.composer-image-attachment:hover .composer-image-attachment-remove,
-.composer-image-attachment:focus-within .composer-image-attachment-remove { opacity: 1; }
-.composer-image-attachment button:focus-visible { outline: 2px solid var(--ds-text-secondary); outline-offset: 2px; }
-@media (hover: none) {
-  .composer-image-attachment-remove { opacity: 1; }
+.composer-image-hover[data-placement="above"] { transform: translate(-50%, -100%); }
+.composer-image-hover[data-placement="below"] { transform: translate(-50%, 0); }
+
+.composer-image-hover img {
+  display: block;
+  max-width: min(240px, 40vw);
+  max-height: min(240px, 40dvh);
+  border-radius: var(--radius-2xs);
+  object-fit: contain;
 }
 
 .composer-image-preview {

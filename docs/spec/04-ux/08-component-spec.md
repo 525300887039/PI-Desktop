@@ -3385,17 +3385,21 @@ Anatomy:
   Text/plain and `.txt` chips are also keyboard-focusable buttons: clicking or
   pressing Enter/Space expands their bounded contents into editable draft text;
   binary, image, oversized, or failed reads keep the chip. Ordinary files stay
-  compact chips. Unsent images render in a left-aligned attachment row above and
-  outside the input shell, never within editable text. Their existing detached
-  reference metadata survives text selection, editing, undo, and session
-  switching; restored inline-image tokens are removed from text while keeping
-  the attachment. Image-only drafts enable Send; a rejected send restores both
-  text and attachments even when rejection precedes the next render. The
-  attachment row is height-limited and scrolls vertically so every image remains
-  reachable in a narrow chat pane. Thumbnails have an independent
-  remove button shown on hover/focus (always visible for touch input). No
-  separate explanatory vision-status row is rendered.
-  Clicking an image or pressing Enter/Space opens a modal image preview, without
+  compact chips. Unsent images render as the same compact inline chip inside the
+  editable draft, at the insertion point, with the image glyph and leaf name.
+  Hovering one reveals a read-only preview card of its bounded data URL above
+  the chip, or below it when the chip sits on the first line; moving the pointer
+  away, typing, scrolling, resizing, or opening the modal dismisses the card,
+  and the card never takes pointer events from the draft. A restored image
+  reference without an inline token gains one, so a cache written before inline
+  image chips, a restored queue entry, or a prefill still shows every image.
+  Reference metadata survives text selection, editing, undo, and session
+  switching; the chip's own remove button drops the attachment. Image-only
+  drafts enable Send; a rejected send restores both text and attachments even
+  when rejection precedes the next render. No separate explanatory
+  vision-status row is rendered.
+  Clicking an image chip or pressing Enter/Space on it opens a modal image
+  preview, without
   sending the draft or changing the work-panel tabs. Inside the dark viewport,
   the image is horizontally and vertically centered, keeps its aspect ratio,
   and initially fits available space without upscaling small images. The
@@ -3408,7 +3412,7 @@ Anatomy:
   the close button, or a blank-area click dismisses it and restores the prior
   input focus/caret. Focus remains inside the modal, and native plugin surfaces
   are hidden while it is open. The remove button never opens or submits.
-  Thumbnails and previews use the bounded, contained `fs/readImageDataUrl`
+  Preview cards and the modal use the bounded, contained `fs/readImageDataUrl`
   bridge, including allowed scratch files when no project is open. Missing,
   unsupported, oversized, or undecodable images show a retry state and retain
   the draft. Session/project changes or removal of the selected attachment
