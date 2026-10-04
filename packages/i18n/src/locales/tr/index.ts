@@ -785,7 +785,6 @@ sklm: {
       skills: "Beceriler",
       mcp: "MCP",
       subagents: "Alt ajanlar",
-      import: "İçe aktar",
       projects: "Projeler",
       sync: "Bulut senkronizasyonu",
       remoteHosts: "Uzak ana bilgisayarlar",
@@ -1166,7 +1165,6 @@ sklm: {
     skillSaved: "{{name}} kaydedildi",
     subagentCreated: "{{name}} oluşturuldu",
     subagentSaved: "{{name}} kaydedildi",
-    import: "İçe aktar",
     projectArchive: "Proje arşivi",
     remoteHosts: {
       title: "Uzak ana bilgisayarlar",
@@ -1217,7 +1215,6 @@ sklm: {
     importFound: "Bulunan oturumlar: {{count}}",
     importFound_one: "1 oturum bulundu",
     importFound_other: "{{count}} oturum bulundu",
-    importCodexCapped: "Codex, klasör tarihine göre en yeni {{limit}} oturum dosyasıyla sınırlıdır.",
     importNone: "Bu makinede içe aktarılabilir oturum bulunamadı.",
 
     importSelectAll: "Tümünü seç",
@@ -1228,9 +1225,6 @@ sklm: {
     importMessages_other: "{{count}} ileti",
     importMessagesUnknown: "—",
     importNoProject: "Proje yok",
-    importSessionCount: "{{count}} oturum",
-    importSessionCount_one: "1 oturum",
-    importSessionCount_other: "{{count}} oturum",
     importSelectedCount: "{{count}} seçili",
     importGroupBy: "Grupla",
     importGroupByPath: "Proje yolu",

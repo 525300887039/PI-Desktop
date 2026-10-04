@@ -79,7 +79,7 @@ test("composer renders atomic inline chips and serializes paths on send", () => 
   assert.match(composer, /chip\.title = origin/);
   assert.match(
     composer,
-    /serializeComposerFileReferences\(text, activeFileReferences\)/,
+    /serializeComposerFileReferences\(outgoing\.text, outgoing\.references\)/,
   );
   assert.match(
     composer,
@@ -118,7 +118,7 @@ test("text file chips expand into editable draft text", () => {
 });
 
 test("unanswered stop restores compact references instead of serialized paths", () => {
-  assert.match(composer, /setValue\(composerPrefill\.text\)/);
+  assert.match(composer, /setValue\(prefilled\.text\)/);
   assert.match(composer, /composerPrefill\.fileReferences\.map/);
   assert.match(composer, /composerPrefill\.sessionId !== activeSessionId/);
   assert.match(

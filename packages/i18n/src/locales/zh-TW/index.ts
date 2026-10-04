@@ -775,7 +775,6 @@ sklm: {
       skills: "技能",
       mcp: "MCP",
       subagents: "子智慧體",
-      import: "匯入",
       projects: "專案",
       sync: "雲端同步",
       remoteHosts: "遠端主機",
@@ -1152,7 +1151,6 @@ sklm: {
     skillSaved: "已儲存 {{name}}",
     subagentCreated: "已新建 {{name}}",
     subagentSaved: "已儲存 {{name}}",
-    import: "匯入",
     projectArchive: "專案歸檔",
     remoteHosts: {
       title: "遠端主機",
@@ -1203,7 +1201,6 @@ sklm: {
     importFound: "發現 {{count}} 個會話",
     importFound_one: "發現 1 個會話",
     importFound_other: "發現 {{count}} 個會話",
-    importCodexCapped: "Codex 僅列出依目錄日期最新的 {{limit}} 個工作階段檔案。",
     importNone: "未在本機發現可匯入的會話。",
 
     importSelectAll: "全選",
@@ -1214,9 +1211,6 @@ sklm: {
     importMessages_other: "{{count}} 條訊息",
     importMessagesUnknown: "—",
     importNoProject: "未關聯專案",
-    importSessionCount: "{{count}} 個會話",
-    importSessionCount_one: "1 個會話",
-    importSessionCount_other: "{{count}} 個會話",
     importSelectedCount: "已選 {{count}} 個",
     importGroupBy: "分組方式",
     importGroupByPath: "專案路徑",

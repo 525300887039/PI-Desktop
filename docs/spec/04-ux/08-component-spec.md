@@ -1668,6 +1668,8 @@ storage but compose into one assistant turn until the next user message.
   normal 100-row page and deliberately loaded full histories, and to foreground
   and background session caches. Shallow array copies
   remain permitted; cold loads and structural changes may rebuild the projection.
+  Structural appends reuse cached content facts for unchanged immutable messages,
+  including delegate answers, instead of rereading and trimming completed text.
 - Completed rows and unchanged parts within a large active turn/activity group
   retain their render boundaries. Deferred presentation consumes one immutable
   projection snapshot. Older-row and child updates, terminal re-keying, Copy,
@@ -1736,8 +1738,10 @@ Single message render — either user (plaintext) or assistant (markdown streami
   collapse. Serialized `@path` file references render as compact leaf-name
   chips matching the composer node (icon + ellipsized name; canonical path in
   the tooltip and accessible name). Image attachments that are not already
-  inlined as `@path` chips render as bounded thumbnails (data URL from
-  `fs/readImageDataUrl`); unresolved loads keep the chip. A referenced
+  inlined as `@path` chips render as the same compact image chip; hovering or
+  focusing it reveals the bounded data URL (`fs/readImageDataUrl`) in a
+  read-only preview card above the chip (below it when the chip sits at the
+  top), and an unresolved load leaves the chip alone. A referenced
   conversation (`kind: "session"`) renders as a chat-icon chip labeled with the
   shared reference label and the referenced title; the tooltip and accessible
   name come from the catalog, and activating it opens that conversation
@@ -1765,7 +1769,7 @@ Single message render — either user (plaintext) or assistant (markdown streami
    primary folder in the side browser. A primary-folder file is addressed to the
    view as a project-relative path and a sibling-folder file as an absolute one,
    which is also how scratch and attachment files are addressed. A resolved
-   image thumbnail resolves and opens the same way. A chip whose reference
+   image chip resolves and opens the same way. A chip whose reference
    matches nothing opens nothing and reports itself; an absolute path outside
    every allowed root reports the access limit separately. The OS default application
    is no longer what this click does.
@@ -3383,17 +3387,21 @@ Anatomy:
   Text/plain and `.txt` chips are also keyboard-focusable buttons: clicking or
   pressing Enter/Space expands their bounded contents into editable draft text;
   binary, image, oversized, or failed reads keep the chip. Ordinary files stay
-  compact chips. Unsent images render in a left-aligned attachment row above and
-  outside the input shell, never within editable text. Their existing detached
-  reference metadata survives text selection, editing, undo, and session
-  switching; restored inline-image tokens are removed from text while keeping
-  the attachment. Image-only drafts enable Send; a rejected send restores both
-  text and attachments even when rejection precedes the next render. The
-  attachment row is height-limited and scrolls vertically so every image remains
-  reachable in a narrow chat pane. Thumbnails have an independent
-  remove button shown on hover/focus (always visible for touch input). No
-  separate explanatory vision-status row is rendered.
-  Clicking an image or pressing Enter/Space opens a modal image preview, without
+  compact chips. Unsent images render as the same compact inline chip inside the
+  editable draft, at the insertion point, with the image glyph and leaf name.
+  Hovering one reveals a read-only preview card of its bounded data URL above
+  the chip, or below it when the chip sits on the first line; moving the pointer
+  away, typing, scrolling, resizing, or opening the modal dismisses the card,
+  and the card never takes pointer events from the draft. A restored image
+  reference without an inline token gains one, so a cache written before inline
+  image chips, a restored queue entry, or a prefill still shows every image.
+  Reference metadata survives text selection, editing, undo, and session
+  switching; the chip's own remove button drops the attachment. Image-only
+  drafts enable Send; a rejected send restores both text and attachments even
+  when rejection precedes the next render. No separate explanatory
+  vision-status row is rendered.
+  Clicking an image chip or pressing Enter/Space on it opens a modal image
+  preview, without
   sending the draft or changing the work-panel tabs. Inside the dark viewport,
   the image is horizontally and vertically centered, keeps its aspect ratio,
   and initially fits available space without upscaling small images. The
@@ -3406,7 +3414,7 @@ Anatomy:
   the close button, or a blank-area click dismisses it and restores the prior
   input focus/caret. Focus remains inside the modal, and native plugin surfaces
   are hidden while it is open. The remove button never opens or submits.
-  Thumbnails and previews use the bounded, contained `fs/readImageDataUrl`
+  Preview cards and the modal use the bounded, contained `fs/readImageDataUrl`
   bridge, including allowed scratch files when no project is open. Missing,
   unsupported, oversized, or undecodable images show a retry state and retain
   the draft. Session/project changes or removal of the selected attachment
@@ -3719,126 +3727,95 @@ dismissToast(id: number); // ToastHost internal / tests
 
 ---
 
-## 18. Import destination
+## 18. Inline import workbenches
 
 ### 18.1 Purpose
 
-Scan supported local agent stores for the four things this machine can hand
-over — sessions, provider/model configuration, skills, and MCP servers — then
-review the candidates, select them, and start an explicit import.
+Model configuration, external skills, and MCP imports live in the Settings
+pages that own the records they create. Settings does not provide a session
+import destination; plugin session imports remain available through the plugin
+API and keep their existing ownership and project-binding rules.
 
-### 18.2 Anatomy
+### 18.2 Shared anatomy
 
-One workbench per kind behind a segmented kind switcher; every kind owns its
-own scan, selection, and import action.
+Each owning page has an import toggle. The toggle reveals an inline workbench
+that remains mounted while closed, preserving a scan result and selection until
+the scope changes or the user scans again.
 
 ```text
-[ Sessions | Models | Skills | MCP ]                   ← kind switcher
-[ ] Found 12 · 6 selected   Group by: Source ▾   [Scan] [Import selected (6)]
-───────────────────────────────────────────────────────────────────────────
-CLAUDE CODE              ~/code/pi                                  4
-[ ] Refactor the importer   12 messages · Jan 5, 2026   [Claude Code]
+Models:    Providers                         [Import from other tools] [Add provider]
+Skills:    [All | Global | Project] [Search] [Scan other tools] [New] [Market]
+MCP:       [All | Global | Project] [Search] [Scan other tools] [Add] [Market]
+
+[ ] Found 3 · 1 selected                         [Scan] [Import selected (1)]
+CLAUDE CODE                                                            1
+[ ] example-server     node                                  [stdio]
 ```
 
-- The switcher reuses the labels the sidebar and the settings rail already ship
-  (`nav.sessions`, `settings.nav.models`, `settings.nav.skills`,
-  `settings.nav.mcp`), so the page adds no catalog entries of its own.
-- Each kind carries its own toolbar: the select-all checkbox with both the
-  "found" sentence and the selected count, the kind's own option (session
-  grouping, skills import mode), re-scan, and Import selected.
-- Before a kind's first scan its panel shows a quiet next-action state: what the
-  scan reads plus the Scan action. Switching tabs never starts a scan
-  (D007 / D342).
-- Group headers are quiet label lines — source or project name, the resolved
-  path in mono, and a count pill — not tinted bands; the candidates below them
-  are individual tiles.
-- The grouping control supports **Project path** and **Source**. Source is the
-  default. In project-path mode, exact paths remain visible in group headers,
-  and sessions without a project path appear in a final **No project** group.
-- Import source names, grouping and mode controls, counts, results, and
-  accessible names come from the shared i18n catalog. Candidate dates use the
-  active app locale.
+- Scanning is explicit; opening the panel never starts a scan.
+- A successful scan replaces its candidates, clears the selection, and shows
+  source groups expanded. Group headers disclose their rows and expose localized
+  counts.
+- Candidate rows are selectable tiles with source, identity, concise metadata,
+  and any kind-specific badge. Secrets are never displayed.
+- The toolbar and group checkboxes expose checked, unchecked, and indeterminate
+  states. Import remains disabled until at least one candidate is selected.
+- A scope change resets the Skills or MCP panel so candidates from one target
+  cannot be imported into another by mistake.
 
-### 18.3 States and interactions
+### 18.3 Capability scope
 
-- A successful scan replaces the prior candidate set, clears selection, and
-  shows every group expanded: the found candidates are the answer to the scan,
-  so they are not hidden behind a second click.
-- Codex session discovery walks `~/.codex/sessions/YYYY/MM/DD` newest-path-first
-  and stops after 250 `.jsonl` files. That order is folder-date lexicographic,
-  not `updatedAt`. When the cap hits, `session/importScan` returns
-  `truncated.codex = 250` and the sessions toolbar shows the localized cap note;
-  older Codex files are absent from the candidate list.
+- The destination is the current Global / Project filter. The All filter
+  targets Global, matching the existing create action.
+- Project scope requires a selected project. The import toggle is disabled when
+  Project is selected without a project path.
+- Project scans receive the selected path, and imports carry both the level and
+  path through IPC to host-core. The same scope is used when preserving a
+  source MCP server's disabled state.
+- Skills keep their existing copy / link mode. A successful import refreshes
+  the capability list and scan results.
 
-- Every kind scans on its own: a session scan never starts a model-config,
-  skills, or MCP scan, and switching tabs preserves the result and the
-  selection of the kind left behind (inactive panels stay mounted and hidden).
-- A successful import creates or reuses one durable Projects-index entry for
-  each distinct non-empty project path and refreshes sessions/projects.
-- When a successful core or plugin import adds a project-bound session under an
-  archived project, the renderer restores that project's presentation state
-  after the refresh so the project and imported session are visible in the
-  default sidebar. This applies only to newly added bound sessions; ordinary
-  refreshes, pathless sessions, and skipped imports preserve archive state.
-- Path-less imports create no project entry and remain under Temporary
-  sessions. Import never creates a physical filesystem directory.
-- Re-importing an existing source session skips it without duplicating its
-  project entry.
-- Changing the grouping mode preserves candidate selection and shows every
-  newly formed group expanded.
-- Expanding or collapsing one group does not affect the others.
-- Group and global checkboxes support checked, unchecked, and indeterminate
-  selection states; the global checkbox reports a partial selection as
-  indeterminate.
-- Candidates inside each group and groups themselves are ordered newest first;
-  the path-less group remains last in project-path mode.
+### 18.4 Accessibility and responsive behavior
 
-### 18.4 Accessibility
-
-- The kind switcher is a `tablist` of `tab` controls, each carrying
-  `aria-selected` and `aria-controls` that names its panel. Every panel is a
-  `tabpanel` labelled by its tab, and an inactive panel is `hidden` rather than
-  visually covered.
-- Each disclosure button exposes `aria-expanded` and references its body with
+- The import toggle is a button with `aria-expanded` and `aria-controls`; its
+  controlled panel is hidden when closed.
+- Disclosure buttons expose `aria-expanded` and reference their group body with
   `aria-controls`.
-- Global and group checkboxes have localized accessible names and carry the
-  indeterminate state.
-- The grouping and import-mode selectors are the shared in-app menu selects
-  with visible labels and keyboard operation, never a platform-drawn
-  `<select>`.
-- Group count pills carry the localized count sentence as their title.
-- Projects-row disclosure and action-menu buttons expose localized,
-  project-specific accessible names.
+- Global, group, and row checkboxes use the shared checkbox control and carry
+  localized accessible names.
+- Group labels and counts wrap within the available Settings content width;
+  the toolbar actions wrap on narrow windows without horizontal page scrolling.
 
 ### 18.5 ModelConfigImportPanel
 
-Scan the same local agent stores for provider and model settings, review
-candidates grouped by source, select them, and start an explicit import.
+Models exposes model configuration scanning from the Providers section. Scan
+candidates from Claude Code, Codex, OpenCode, Pi, and CC Switch. Rows show the
+provider name, model count, host, source, and an API key / No API key badge; no
+raw secret reaches the renderer. Stored API keys are saved through the host
+secret store. OAuth and subscription logins are not copied. Re-importing an
+equivalent provider (normalized URL, API style, and credential) is skipped;
+different credentials at one endpoint remain separate providers. If no default
+model exists after import, the first created provider becomes the default.
 
-```text
-[ ] Found 3 · 1 selected                        [Scan] [Import selected (1)]
-───────────────────────────────────────────────────────────────────────────
-CLAUDE CODE                                                                1
-[ ] acme-gateway   4 models · api.acme.dev    [API key]
-```
+### 18.6 External skill import
 
-- The kind is independent of session import: its own scan, selection, and
-  Import selected action. A session scan never starts a model-config scan, and
-  the two are shown one at a time behind the switcher.
-- Source grouping is the only grouping. A successful scan replaces the prior
-  candidate set, clears selection, and shows every group expanded.
-- Each row shows the provider name, model count, host, an API key / No API
-  key badge, and the source. The raw secret never reaches the renderer.
-- Import creates one `providers.create` row per selected candidate. An
-  existing provider with the same normalized base URL, API style, and
-  credential is skipped; different credentials at one endpoint create
-  independent rows. OAuth-only source accounts are omitted from the scan.
-  CC Switch is a fifth source (`~/.cc-switch/cc-switch.db`); a live tool
-  file that matches a CC Switch endpoint and credential is not listed twice;
-  a different credential remains visible.
-- If `settings.defaultProviderId` is empty after a successful create, the
-  first new provider becomes the global default.
----
+Skills exposes its external scan from the page toolbar, alongside New and
+Market. The scanner covers supported Claude and Pi skill stores. Candidate
+rows show the name, description or source path, and file / folder shape. The
+copy / link option stays in the workbench. Imported skills follow the selected
+Global / Project scope and project path, then the list and scan results refresh.
+The native file and folder import actions in the level groups remain available.
+
+### 18.7 External MCP import
+
+MCP exposes its external scan from the page toolbar, alongside Add and Market.
+The scanner covers supported Claude Desktop, Claude Code, Cursor, Codex,
+OpenCode, and ChatGPT Desktop stores. Candidate rows show a label, safe
+metadata, source, and transport. URL metadata is reduced to its host so
+userinfo, paths, and query credentials never render; environment and header
+values are not shown. Imported servers follow the selected Global / Project
+scope and project path. A disabled source server remains disabled after the
+host write succeeds.
 
 ## 19. ProviderStudio (Settings → Agent)
 

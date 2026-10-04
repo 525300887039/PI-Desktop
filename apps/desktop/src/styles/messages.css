@@ -1715,29 +1715,12 @@
   white-space: nowrap;
 }
 
-.message-attachment-image {
+/* A user-message image is a chip like any other attachment; its preview card
+   appears on hover or focus and is rendered outside the message row. */
+.message-attachment-image-chip {
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  padding: 3px;
-  background: var(--ds-tile);
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.message-attachment-image:hover {
-  background: var(--ds-raised);
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ds-accent) 18%, transparent);
-}
-
-.message-attachment-image img {
-  display: block;
-  max-width: 220px;
-  max-height: 220px;
-  object-fit: contain;
-  border-radius: var(--radius-sm);
 }
 
 .message-row.assistant .message-bubble,
