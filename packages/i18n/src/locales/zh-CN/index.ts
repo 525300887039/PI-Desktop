@@ -775,7 +775,6 @@ sklm: {
       skills: "技能",
       mcp: "MCP",
       subagents: "子智能体",
-      import: "导入",
       projects: "项目",
       sync: "云同步",
       remoteHosts: "远程主机",
@@ -1152,7 +1151,6 @@ sklm: {
     skillSaved: "已保存 {{name}}",
     subagentCreated: "已新建 {{name}}",
     subagentSaved: "已保存 {{name}}",
-    import: "导入",
     projectArchive: "项目归档",
     remoteHosts: {
       title: "远程主机",
@@ -1203,7 +1201,6 @@ sklm: {
     importFound: "发现 {{count}} 个会话",
     importFound_one: "发现 1 个会话",
     importFound_other: "发现 {{count}} 个会话",
-    importCodexCapped: "Codex 仅列出按目录日期最新的 {{limit}} 个会话文件。",
     importNone: "未在本机发现可导入的会话。",
 
     importSelectAll: "全选",
@@ -1214,9 +1211,6 @@ sklm: {
     importMessages_other: "{{count}} 条消息",
     importMessagesUnknown: "—",
     importNoProject: "未关联项目",
-    importSessionCount: "{{count}} 个会话",
-    importSessionCount_one: "1 个会话",
-    importSessionCount_other: "{{count}} 个会话",
     importSelectedCount: "已选 {{count}} 个",
     importGroupBy: "分组方式",
     importGroupByPath: "项目路径",

@@ -19,6 +19,7 @@ import {
 import { useOpenChatFileRef, useOpenPreviewTarget } from "../../../hooks/use-preview-target";
 import { useChatFileMenu } from "../../../hooks/use-chat-file-menu";
 import { ContextMenu } from "../../../components/ContextMenu";
+import { ImageHoverCard, type ImageHoverAnchor } from "../../../components/ImageHoverCard";
 import { useDisclosureAnchorNotifier } from "../../../lib/disclosure-anchor-context";
 import { isThinkingActive, resolveThinkingDisplayMode } from "../../../lib/turn-process";
 import { TranscriptSearchContext } from "../../../lib/transcript-search-context";
@@ -502,9 +503,10 @@ export function SessionRefChip({ attachment }: { attachment: MessageAttachment }
 }
 
 /**
- * User-message image attachment as a thumbnail. The host resolves the ref
- * into a bounded data URL; an unresolvable load falls back to the file chip.
- * Clicking opens the files viewer on the same contained ref.
+ * User-message image attachment as the same compact chip as any other file
+ * reference. The host resolves the ref into a bounded data URL that the hover
+ * (or focus) card shows; an unresolved load simply keeps the chip. Clicking
+ * opens the files viewer on the same contained ref.
  */
 export function MessageAttachmentImage({
   attachment,
@@ -513,34 +515,36 @@ export function MessageAttachmentImage({
   attachment: MessageAttachment;
   onOpenFile: (path: string, baseDir?: string, mimeType?: string) => void;
 }) {
-  const { fileMenu, openFileMenu, closeFileMenu } = useChatFileMenu();
   const dataUrl = useReferencedImageDataUrl(attachment.ref, attachment.mimeType);
-  if (!dataUrl) {
-    return (
-      <FileRefChip
-        name={attachment.name}
-        path={attachment.ref}
-        kind="image"
-        mimeType={attachment.mimeType}
-        onOpen={onOpenFile}
-      />
-    );
-  }
+  const [anchor, setAnchor] = useState<ImageHoverAnchor | null>(null);
+  const chipRef = useRef<HTMLSpanElement>(null);
+  const reveal = () => {
+    const element = chipRef.current;
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    setAnchor({ left: rect.left, top: rect.top, bottom: rect.bottom, width: rect.width });
+  };
+  const dismiss = () => setAnchor(null);
   return (
     <>
-      <button
-        type="button"
-        className="message-attachment-image"
+      <span
+        ref={chipRef}
+        className="message-attachment-image-chip"
         role="listitem"
-        title={`${attachment.name} — ${attachment.ref}`}
-        onClick={() =>
-          useAppStore.getState().openFileInWorkPanel(attachment.ref, attachment.mimeType)
-        }
-        onContextMenu={(event) => openFileMenu(event, { path: attachment.ref })}
+        onPointerEnter={reveal}
+        onPointerLeave={dismiss}
+        onFocus={reveal}
+        onBlur={dismiss}
       >
-        <img src={dataUrl} alt={attachment.name} />
-      </button>
-      <ContextMenu state={fileMenu} onClose={closeFileMenu} />
+        <FileRefChip
+          name={attachment.name}
+          path={attachment.ref}
+          kind="image"
+          mimeType={attachment.mimeType}
+          onOpen={onOpenFile}
+        />
+      </span>
+      <ImageHoverCard src={dataUrl} anchor={anchor} onDismiss={dismiss} />
     </>
   );
 }

@@ -789,7 +789,6 @@ sklm: {
       skills: "Skills",
       mcp: "MCP",
       subagents: "Subagents",
-      import: "Import",
       projects: "Projects",
       sync: "Cloud sync",
       remoteHosts: "Remote hosts",
@@ -1022,7 +1021,6 @@ sklm: {
     skillSaved: "Saved {{name}}",
     subagentCreated: "Created {{name}}",
     subagentSaved: "Saved {{name}}",
-    import: "Import",
     projectArchive: "Project archive",
     remoteHosts: {
       title: "Remote hosts",
@@ -1234,7 +1232,6 @@ sklm: {
     importFound: "Sessions found: {{count}}",
     importFound_one: "1 session found",
     importFound_other: "{{count}} sessions found",
-    importCodexCapped: "Codex is limited to the {{limit}} newest session files (by folder date).",
     importNone: "No importable sessions found on this machine.",
 
     importSelectAll: "Select all",
@@ -1245,9 +1242,6 @@ sklm: {
     importMessages_other: "{{count}} messages",
     importMessagesUnknown: "—",
     importNoProject: "No project",
-    importSessionCount: "{{count}} sessions",
-    importSessionCount_one: "1 session",
-    importSessionCount_other: "{{count}} sessions",
     importSelectedCount: "{{count}} selected",
     importGroupBy: "Group by",
     importGroupByPath: "Project path",
