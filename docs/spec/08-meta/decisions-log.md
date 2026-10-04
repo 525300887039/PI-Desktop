@@ -38,6 +38,7 @@ This log freezes previously open questions into concrete decisions.
 | D641 | Custom endpoint API style precedence | **A custom endpoint uses the saved provider-row `apiStyle` ahead of a model catalog's adapter API. Named and OAuth providers can continue to use a model-level wire API pin where their published configuration requires a different transport. This keeps a user's explicit endpoint choice stable without removing model-specific routing such as OpenCode Go Responses models. No persisted format or protocol change. See E2E-005E and issue #1313.** | A publisher's adapter default must not silently redirect a custom gateway whose user-selected API format is different. |
 | D642 | Cloud sync is a public Experimental destination *(amended by D643)* | **Remove the developer-mode and packaged-build gates from the Settings `sync` destination: its rail row, page, and settings-search hits exist for every user in every build, and a saved `sync` tab no longer falls back to General. Remote Hosts keeps both gates and its own badge. The destination keeps its Experimental badge on the rail row and page title; sync behavior, protocol, host schema, and persisted data are unchanged. See `04-ux/06-settings-ia.md` and E2E-CONFIG-SYNC-webdav-portable-configuration.** | Encrypted WebDAV backup is the app's only multi-device configuration path, and a developer-mode gate left it undiscoverable for the users who need it. |
 | D643 | Cloud sync ships without an Experimental badge | **Amend D642: the Settings `sync` destination drops `experimentalBadgeKey`, and `settings.configSync.experimental` is removed from every bundled locale. Cloud sync stays available to every user in every build. Remote Hosts keeps its own badge and both gates. Sync behavior, protocol, host schema, and persisted data are unchanged. See `04-ux/06-settings-ia.md` and E2E-CONFIG-SYNC-webdav-portable-configuration.** | Cloud sync is the app's shipped multi-device path, so an Experimental label no longer described it and only made the destination look unfinished. |
+| D644 | Portable instruction files have no size cap | **Remove the 32 KiB per-file cap Host enforced on portable instruction files. Global and project instruction content is bounded only by the same portable-entity payload bound every other domain already has, checked when a revision is uploaded and when a remote one is validated. UTF-8 validation, symlink rejection, scope selection, mapping, and approval rules are unchanged. See `03-runtime/22-config-sync.md` §2.** | A 33 KiB project `AGENTS.md` failed the entire capture with `CONFIG_SYNC_LIMIT_EXCEEDED: instruction file is too large`, which the Settings page could only show as a generic backup-size error. |
 | D450 | Signed macOS GitHub Releases | **Amend D078 / ADR 0022: GitHub tag releases Developer ID-sign, notarize (`notarytool` via electron-builder 26), staple, and Gatekeeper-verify macOS DMG/ZIP before upload, using identity `Developer ID Application: XingYu Liu (DUV63RKYTW)` / team `DUV63RKYTW` from Actions secrets (`CSC_LINK`, `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`). Missing secrets fail the job. Local unsigned packaging without a certificate remains. `workflow_dispatch` may set `sign_macos: false` only for unsigned debug artifacts. Packaged macOS uses in-app `electron-updater` (ZIP + merged `latest-mac.yml`); Linux deb/rpm and Windows portable ZIP stay notify-and-link. No afterPack/afterSign adhoc codesign (ADR 0278).** | Production DMGs must open without a Gatekeeper warning, and signed macOS installs can download and restart into a new tag. See ADR 0289, E2E-196c, E2E-067A. |
 
 ## B. Secondary implementation defaults
@@ -7437,3 +7438,20 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   `apps/desktop/test/settings-developer-only-destinations.test.mjs` and
   `apps/desktop/test/config-sync-settings.test.mjs`, plus the Cloud sync probe
   in `pnpm test:e2e:settings-scroll`.
+
+## 2026-10-04 — Instruction files sync without an instruction-specific byte cap (D644)
+
+- D644 removes the 32 KiB per-file cap Host enforced on portable instruction
+  files. A project `AGENTS.md` larger than that cap failed the whole capture
+  with `CONFIG_SYNC_LIMIT_EXCEEDED: instruction file is too large`, which the
+  settings page could only report as a generic backup-size error.
+- Instruction content is now bounded only by the shared portable-entity payload
+  bound Host checks when it uploads a revision and when it validates a remote
+  one. UTF-8 validation, symlink rejection, scope selection, mapping, and
+  approval rules are unchanged, and the agent-runtime prompt chain keeps its
+  own read-side budget.
+- Covered by
+  `config_sync::domains::tests::captures_project_instruction_files_beyond_the_former_size_cap`
+  and
+  `config_sync::domains::tests::writes_imported_instruction_files_beyond_the_former_size_cap`
+  in `crates/host-core/src/config_sync/domains.rs`.
