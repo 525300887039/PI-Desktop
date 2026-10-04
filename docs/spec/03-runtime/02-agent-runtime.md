@@ -983,7 +983,10 @@ ends at the provider's output-token limit (`stopReason: "length"` or
 bounded partial report remains under the failure explanation for diagnosis. A
 later delegate turn that ends normally clears the marker and can complete. A
 terminal parent error also aborts leftover delegates, skips the resume prompt,
-and returns the session to idle so Continue is not `AGENT_BUSY` (D352).
+and returns the session to idle so Continue is not `AGENT_BUSY` (D352). The
+interrupted delegates settle as `failed` with `SUBAGENT_PARENT_FAILED` and keep
+their transcript-backed resume eligibility. This does not automatically restart
+them; user Stop, TaskStop and dispose still settle as non-resumable cancellations.
 
 **Resumable delegations (ADR 0279).** `Task` accepts an optional `resume`
 parameter carrying the `delegationId` of a settled delegation in the same
