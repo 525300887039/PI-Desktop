@@ -155,8 +155,17 @@ test("a referenced conversation renders as a chip naming its own target", () => 
   assert.match(html, /data-session-id="session-a"/);
   assert.match(
     read("../src/features/chat/transcript/shared.tsx"),
-    /onClick=\{\(\) => void selectSession\(sessionId\)\.catch\(\(\) => undefined\)\}/,
+    /const open = \(\) => void selectSession\(sessionId\)\.catch\(\(\) => undefined\)/,
     "activating the chip opens the referenced conversation",
+  );
+  // The chip is a span, not a <button>, because Chromium never fragments a
+  // button across lines and an atomic chip leaves the line it left blank.
+  assert.match(html, /role="button"/, "the chip is announced as a button");
+  assert.match(html, /tabindex="0"/, "the chip is reachable from the keyboard");
+  assert.match(
+    read("../src/features/chat/transcript/shared.tsx"),
+    /if \(event\.key !== "Enter" && event\.key !== " "\) return;\s*\n\s*event\.preventDefault\(\);\s*\n\s*open\(\);/,
+    "Enter and Space activate the chip, the way a button does",
   );
   assert.ok(
     html.includes(`${catalogs.en.chat.sessionReference} · Nightly review`),
@@ -220,6 +229,32 @@ test("a user message shows the reference as its body chip, not a second block", 
   assert.match(html, /data-session-id="session-a"/);
   assert.match(html, /Conversation · Nightly review/);
   assert.doesNotMatch(html, /pi-desktop:\/\/session\/session-a/, "the raw link is replaced by the chip");
+});
+
+test("an extra attachment chip continues the body text instead of heading it", () => {
+  locale = "en";
+  const withImage = {
+    ...userMessage,
+    content: "look at this",
+    attachments: [{ kind: "image", name: "shot.png", ref: "attachments/abc" }],
+  };
+  const html = renderRow(withImage);
+  const bodyAt = html.indexOf("message-user-text");
+  assert.notEqual(bodyAt, -1, "the body text container is missing");
+  assert.doesNotMatch(
+    html.slice(0, bodyAt),
+    /message-attachments/,
+    "no attachment block above the body",
+  );
+  assert.match(
+    html.slice(bodyAt),
+    /class="message-attachments"/,
+    "the chip lives inside the body text container",
+  );
+  assert.ok(
+    html.indexOf("look at this") < html.indexOf("message-attachments"),
+    "the body text comes before its attachment chip",
+  );
 });
 
 test("a referenced conversation is not rendered as a file chip", () => {

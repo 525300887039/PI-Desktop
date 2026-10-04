@@ -82,6 +82,28 @@ test("a chip inside a message reads at that message's own type scale", () => {
   assert.doesNotMatch(block, /height: 20px/);
 });
 
+test("a conversation chip breaks with the line instead of emptying it", () => {
+  const selector = '.message-row .composer-chip[data-action="open-session-reference"]';
+  const start = messages.indexOf(`${selector} {`);
+  assert.notEqual(start, -1, "the conversation chip has no inline-run rule");
+  const block = messages.slice(start, messages.indexOf("}", start));
+  // Chromium never fragments a `<button>`: as one, a chip that does not fit is
+  // pushed whole onto the next line and the line it left keeps its blank. An
+  // inline run breaks with the text, so its first line still reaches the edge.
+  assert.match(block, /display: inline;/);
+  assert.match(block, /white-space: normal;/);
+  assert.match(block, /box-decoration-break: clone;/);
+  const nameStart = messages.indexOf(`${selector} .composer-chip-name {`);
+  assert.notEqual(nameStart, -1, "the label is never told it may break");
+  const nameBlock = messages.slice(nameStart, messages.indexOf("}", nameStart));
+  assert.match(nameBlock, /overflow-wrap: anywhere;/);
+  assert.match(nameBlock, /white-space: normal;/);
+  assert.doesNotMatch(nameBlock, /text-overflow: ellipsis;/);
+  const iconStart = messages.indexOf(`${selector} .composer-chip-icon {`);
+  assert.notEqual(iconStart, -1, "an inline run has no flex gap, so the icon needs its own");
+  assert.match(messages.slice(iconStart, messages.indexOf("}", iconStart)), /margin-right:/);
+});
+
 test("dead components are gone", () => {
   assert.ok(!existsSync(join(here, "../src/components/Topbar.tsx")));
   assert.ok(!existsSync(join(here, "../src/components/HomeQuickActions.tsx")));

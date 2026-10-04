@@ -7339,7 +7339,7 @@ eleven-tool-round desktop paths are verified by
 
 - **前提条件**：工作区含 `docs/pixel.png` 的 Agent 会话。用户曾粘贴图片，会话 JSONL 存有带 mimeType 的 `attachments/<sha256>` 图片引用。
 - **步骤**：
-  1. 重新打开该会话。确认粘贴图片与其它附件一样是芯片，悬停或聚焦时浮出预览小卡。
+  1. 重新打开该会话。确认粘贴图片与其它附件一样是芯片、接在正文之后而不是排在正文上方，悬停或聚焦时浮出预览小卡。
   2. 点击芯片。确认宿主文件查看器打开该附件引用并显示图片。
   3. 发送一回合，助手 Markdown 含 `![](docs/pixel.png)` 和 `![](/etc/passwd)`。确认工作区图片内联显示，工作区外路径不加载文件字节。
   4. 确认 `fs/readImageDataUrl` 在 `ref: "/etc/passwd"` 且 `mimeType: "image/png"` 时返回 `missing`，而不是 data URL。

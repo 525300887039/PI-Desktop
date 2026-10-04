@@ -1738,10 +1738,12 @@ Single message render — either user (plaintext) or assistant (markdown streami
   collapse. Serialized `@path` file references render as compact leaf-name
   chips matching the composer node (icon + ellipsized name; canonical path in
   the tooltip and accessible name). Image attachments that are not already
-  inlined as `@path` chips render as the same compact image chip; hovering or
-  focusing it reveals the bounded data URL (`fs/readImageDataUrl`) in a
-  read-only preview card above the chip (below it when the chip sits at the
-  top), and an unresolved load leaves the chip alone. A referenced
+  inlined as `@path` chips render as the same compact image chip inside the
+  body's own text flow, continuing the message text instead of heading it on a
+  line of its own. Hovering or focusing the chip reveals the bounded data URL
+  (`fs/readImageDataUrl`) in a read-only preview card above it (below it when
+  the chip sits at the top), and an unresolved load leaves the chip alone. A
+  referenced
   conversation (`kind: "session"`) renders as a chat-icon chip labeled with the
   shared reference label and the referenced title; the tooltip and accessible
   name come from the catalog, and activating it opens that conversation
@@ -4265,9 +4267,14 @@ Conversation overflow                    Composer draft (unsent)
   its tile is sized and aligned by that leading so it covers exactly one line of
   message text: the label sits on the line's baseline instead of poking out of
   the composer's compact box. The 11.5px/20px metric is draft-only.
-- The chip is a button with a catalog-built accessible name and a tooltip
-  naming the conversation it opens; it is keyboard-activatable and leaves the
-  surrounding selectable message text intact.
+- A conversation reference is an inline run rather than an atomic chip: it breaks
+  with the line it sits on, so a reference too wide for the line continues on the
+  next line and leaves the line it started on filled. Chromium never fragments a
+  `<button>`, so this chip carries the button role and its Enter and Space
+  behaviour on an activatable span.
+- The chip carries the button role with a catalog-built accessible name and a
+  tooltip naming the conversation it opens; it is keyboard-activatable and leaves
+  the surrounding selectable message text intact.
 - `pi-desktop://` is not yet an operating-system protocol handler; opening a
   link from outside the app is a separate change (issue #1324, option A). This
   section covers the in-app reference.
