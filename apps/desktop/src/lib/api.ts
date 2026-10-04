@@ -281,6 +281,9 @@ export interface ExternalMcpImportItem {
 }
 
 export interface ExternalMcpImportPayload {
+  /** Defaults to global for existing callers. */
+  level?: "global" | "project";
+  projectPath?: string;
   items: ExternalMcpImportItem[];
 }
 

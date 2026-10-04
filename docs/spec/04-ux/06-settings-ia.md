@@ -53,18 +53,17 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
   6. **Skills / 技能** — Lucide `BookOpen` (reusable agent instructions)
   7. **MCP** — Lucide `Server` (agent connections)
   8. **Subagents / 子智能体** — Lucide `Bot` (built-in and personal parallel agents)
-  9. **Import / 导入** — Lucide `Download` (bring sessions and model configuration in from other tools)
-  10. **Projects / 项目** — Lucide `Archive` (durable project index)
-  11. **Cloud sync / 云同步** — Lucide `CloudDownload` (encrypted portable configuration backup and bidirectional sync)
-  12. **Remote Hosts / 远程主机** — Lucide `Globe` (SSH bootstrap and pairing inventory; developer mode only)
-  13. **Info / 信息** — Lucide `Info` (versions, logs, updates, developer)
+  9. **Projects / 项目** — Lucide `Archive` (durable project index)
+  10. **Cloud sync / 云同步** — Lucide `CloudDownload` (encrypted portable configuration backup and bidirectional sync)
+  11. **Remote Hosts / 远程主机** — Lucide `Globe` (SSH bootstrap and pairing inventory; developer mode only)
+  12. **Info / 信息** — Lucide `Info` (versions, logs, updates, developer)
   Icons are decorative (`aria-hidden` via the SVG default) and stay monochrome
   with the rail label; do not reuse refresh/rotate glyphs here.
 - The directory remains a flat searchable list in the same exact order. For
   scanability, the destinations are shown in four titled visual clusters:
   `Preferences` / `偏好` (General, AI, Shortcuts), `Agent` / `智能体`
   (Instructions, Models, Skills, MCP, Subagents), `Workspace` / `工作区`
-  (Import, Projects), and `System` / `系统` (Cloud sync, Remote Hosts, Info;
+  (Projects), and `System` / `系统` (Cloud sync, Remote Hosts, Info;
   Remote Hosts is developer-only). Headings are
   muted, non-interactive labels and use whitespace for separation; no divider
   lines are rendered. These are visual landmarks only, not a second navigation
@@ -528,6 +527,11 @@ a usage tab.
   - vendor-account rows are not rendered in the AI services list; a connected
     vendor account can still be selected in Defaults and is managed only in the
     Vendor accounts card
+  - the Providers section header has an **Import from other tools** action.
+    Its inline panel scans only after the user starts a scan, groups local
+    provider drafts by source, and never renders raw credentials. Stored API
+    keys are written to the host secret store; subscription/OAuth logins are
+    not imported. Re-importing an equivalent provider is skipped.
 
 The permission-mode selector remains available in the composer while the
 session is in Agent, Plan, or Goal. In Plan and Goal it controls Bash
@@ -615,7 +619,7 @@ system while preserving their different data ownership:
   the width with evenly divided segments, search sits below it, and the
   actions wrap left-aligned. Group headers drop the resolved path so row copy
   keeps the width.
-- Skills exposes a Market action beside New / Import. Market is a second view
+- Skills exposes a Market action beside New and Scan other tools. Market is a second view
   of the same page, not a new Settings destination: browse catalog sources,
   preview the assembled markdown (including inlined sibling `.md` files), and
   install through `skills.create` into `~/.agents/skills`. Built-in picks are
@@ -628,6 +632,14 @@ system while preserving their different data ownership:
   guard says so instead of calling every source unreachable, because a proxied
   user sees that refusal while the same URL opens in their browser (ADR 0177).
   Back reloads the skill list.
+- Skills also exposes **Scan other tools** in its toolbar. The explicit scan
+  opens inline on the Skills page, and imported entries follow the current
+  Global / Project filter and selected project. The native file and folder
+  import actions remain available in their level groups.
+- MCP exposes **Scan other tools** beside Add and Market. The explicit scan
+  opens inline on the MCP page. Imported servers follow the current Global /
+  Project filter and selected project; secrets and header values are never
+  shown in candidate rows.
 - The Subagents create/edit sheet pins a model with a searchable, provider-
   grouped anchored menu — the same option-menu control the service picker uses
   — over the configured, runnable models the Composer offers, plus an
@@ -690,33 +702,16 @@ system while preserving their different data ownership:
   instruction API; project instructions remain managed from the active project
   menu and are resolved after the global layer.
 
-### Import
-- Scan supported local agent stores for **sessions**, **model configuration**,
-  **skills**, and **MCP servers** through one workbench per kind behind the
-  page's kind switcher. Every kind keeps its own explicit scan: none of them
-  runs automatically, and switching kinds never starts one (D007 / D342).
-- Sessions: review candidates through `SessionImportPanel`. Source and
-  project-path grouping behavior follows
-  [08-component-spec §18](08-component-spec.md#18-import-destination).
-  The Group-by control is the same in-app menu select as the Appearance and
-  Permissions pickers, not a platform-drawn `<select>`. A Codex archive larger
-  than `CODEX_SCAN_MAX_FILES` (250) is truncated to the newest session files by
-  `YYYY/MM/DD` path date; the workbench shows a localized cap note, and omitted
-  Codex files are not in that candidate list.
-
-- Model configuration: review provider drafts through
-  `ModelConfigImportPanel`
-  ([08-component-spec §18.5](08-component-spec.md#185-modelconfigimportpanel)).
-  Stored API keys from those configs are copied into the host secret store;
-  subscription/OAuth logins are not copied. CC Switch (`~/.cc-switch`) is
-  scanned as its own source so saved profiles, not only the currently
-  applied live file, can be imported. Re-importing an equivalent provider
-  (same normalized base URL, API style, and credential) is skipped; profiles
-  with different credentials at one endpoint remain separate. If the app has
-  no default model yet, the first newly created provider becomes the default.
-- Skills and MCP servers reuse the agent capability scanners and their source
-  labels. The skills kind carries the import mode (copy or symlink); the MCP
-  kind writes into the same MCP list the MCP destination manages.
+### Inline import workbenches
+- Model configuration, external skills, and external MCP scans live inside
+  Models, Skills, and MCP respectively. Each page keeps an explicit scan and
+  selection panel; opening or closing the panel never starts a scan.
+- Skills and MCP imports use the destination selected by the page's current
+  Global / Project filter. Project scans and writes carry the selected project
+  path, and the scan panel resets when that scope changes.
+- Settings has no session-import panel. Session ingestion is available to
+  plugins through the existing host-owned plugin session API; project binding
+  and refresh behavior remain documented with the plugin session contracts.
 
 ### Project archive
 - Reuses the durable Projects index as a settings-scale management surface
@@ -738,7 +733,7 @@ system while preserving their different data ownership:
   in the iOS sense: the selected row is the header of its own card, so the
   detail opens under the row and repeats nothing the row already states. One
   toolbar leads the page and nothing is expanded in it: like the capability and
-  Import destinations, the destination carries no description line, so no
+  inline import workbenches, the destination carries no description line, so no
   sentence sits between the page title and the controls. It reuses the same
   composition, control height, and row rhythm as the agent capability pages
   (D257) and adds no page-specific chrome.
@@ -845,7 +840,7 @@ system while preserving their different data ownership:
 2. Rail shows the search pill at the top, the back-to-app action pinned at the
    foot on the main sidebar's footer icon line, and exactly General / 常规, AI,
    Shortcuts / 快捷键, Instructions / 指令, Models / 模型, Skills / 技能, MCP,
-   Subagents / 子智能体, Import / 导入, Projects / 项目, Cloud sync / 云同步,
+    Subagents / 子智能体, Projects / 项目, Cloud sync / 云同步,
    Remote Hosts / 远程主机, and Info / 信息 in that order. Cloud sync / 云同步 is
    available to every user; Remote Hosts appears only in developer mode. Voice
    appears between AI and Shortcuts only in development builds with developer

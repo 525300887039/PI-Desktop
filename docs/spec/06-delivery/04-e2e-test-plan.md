@@ -2798,41 +2798,53 @@ identify the platform validation still needed.
 - **Status**: Unit-covered (`session-scratch-path.test.mjs`); desktop journey
   Draft (run only in a capable environment when this surface changes)
 
-#### E2E-036: Localized import grouping starts collapsed
+#### E2E-036: Settings session-import destination retired
 
-- **Tab accessibility**: Switch between the four import kinds in English and
-  Chinese. Each selected tab keeps its stable `import-tab-*` id and points to
-  the matching `import-panel-*` through `aria-controls`; that panel points
-  back through `aria-labelledby`. Inactive panels remain hidden and preserve
-  their existing state. The shared selection/link contract is covered by
-  `apps/desktop/test/segmented-control.test.mjs`, with page wiring checked in
-  `apps/desktop/test/settings-import-page.test.mjs`.
-- **Preconditions**: Supported local agent stores contain importable sessions across at least two project paths and two sources, including one session without a project path; the app can be launched once with an English system locale and once with a Simplified Chinese system locale.
-- **Steps**: 1) Launch in English and open Settings → Import. 2) Scan for sessions. 3) Inspect the initial source groups. 4) Expand one group and select a session. 5) Change Group by to Project path. 6) Switch back to Source. 7) Repeat the flow after launching with a Simplified Chinese system locale.
-- **Expected**: Source/来源 is the initial grouping; all groups are collapsed after the scan and after either grouping change; project-path mode shows exact project paths and a final No project/未关联项目 group; expanding one group leaves the others collapsed; the selected session remains selected across grouping changes; counts, dates, selection labels, accessible names, and the import result use the active locale without raw keys or unresolved double-brace placeholders. A Codex archive above the scan threshold may show an em dash for its unknown message count during review, but it remains selectable and the later import converts the complete transcript. A Codex archive with more than 250 session files shows only the newest 250 by folder date plus a localized cap note; older Codex sessions are absent from that scan.
+- **Expected**: Settings has no session-import tab or scan panel. Plugin session
+  import remains available through the host-owned API and is covered by
+  E2E-214 / E2E-215 / E2E-216. The legacy local-session scanner remains covered
+  by its importer unit tests.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`,
+  `07-plugins/03-plugin-api.md`, ADR 0319 / D645
+- **Status**: Retired by D645; Settings UI removed
 
-- **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/02-i18n-english-first.md`, `04-ux/08-component-spec.md`
-- **Acceptance**: F (session import review)
-- **Milestone**: M2
-- **Status**: Draft
+#### E2E-037: Core session-import project workflow retired
 
-#### E2E-037: Import creates durable project entries
-
-- **Preconditions**: Import candidates include two sessions at path A, one at path B, and one without a project path; neither project is the active workspace.
-- **Steps**: 1) Import all candidates. 2) Open Settings → Project archive. 3) Inspect and expand paths A and B. 4) Return home and inspect Temporary sessions. 5) Repeat the import.
-- **Expected**: Project archive contains exactly one durable row for A and one for B; the matching imported sessions appear under their exact project rows; the path-less session appears only under Temporary sessions; the active workspace does not change; repeating import duplicates neither sessions nor project rows; no missing filesystem path is created on disk.
-- **Specs linked**: `03-runtime/04-data-storage.md`, `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`
-- **Acceptance**: F (session/project persistence)
-- **Milestone**: M2
-- **Status**: Draft
+- **Expected**: Project binding and renderer refresh for imported sessions are
+  verified through plugin-owned session import in E2E-216. Settings no longer
+  invokes the legacy core session scanner/import path. Plugin ownership,
+  durable project rows, and project archive behavior remain unchanged.
+- **Specs linked**: `03-runtime/04-data-storage.md`,
+  `04-ux/01-ui-ia.md`, `07-plugins/03-plugin-api.md`, ADR 0319 / D645
+- **Status**: Superseded by E2E-214 / E2E-216
 
 #### E2E-038: Settings owns the project archive destination
 
-- **Preconditions**: App running with at least one configured provider, one supported local session store, one retained project, and one archived project.
-- **Steps**: 1) Open Settings. 2) Inspect the complete settings rail. 3) Open Basics and change the theme in its Appearance card using the searchable theme picker. 4) Open 全局 AI and inspect the Permissions and Defaults cards, including the Command shell row; confirm Context management has no settings card. 5) Open Shortcuts and inspect the Keyboard shortcuts card. 6) Open Instructions and save global instructions. 7) Open Model configuration and inspect the provider studio. 8) Open Import, Project archive, and Info in order. 9) Search Settings for "project" or "archive". 10) In Project archive, compare each group strip's count with its rendered rows. 11) Switch the sort control from Recent to Name. 12) Search for a known session title, confirm the owning project is selected and its inspector lists matching sessions, then reveal more than eight sessions; clear the search with the clear affordance. 13) Open the inspector menu, dismiss it with Escape and with an outside press. 14) Restore the archived project, then activate it. 15) Archive one project session, open it from Project archive, and return to Project archive. 16) Return to the app shell and open Plugins.
-- **Expected**: The rail contains exactly Basics, 全局 AI/AI, Shortcuts, Instructions, Model configuration, Import, Project archive, and Info in that order, each with its semantic Lucide icon (Sliders / Sparkles / Keyboard / FileText / Bot / Download / Archive / Info). The flat directory is visually grouped under four muted, non-interactive headings — Personal / 个人 for Basics, AI, and Shortcuts; Agent / 智能体 for Instructions and Model configuration; Workspace / 工作区 for Import and Project archive; About / 关于 for Info — with whitespace and no divider lines between groups; searching keeps the destination results flat and hides empty groups together with their headings. Appearance remains in Basics, while Permissions, Defaults, and the Command shell row live under 全局 AI; an available selected shell is represented by the selector without a duplicate Configured status, while default, fallback, and no-effective-shell states remain explicit; Context management has no settings card; Keyboard shortcuts and global instructions have their own destinations; Developer lives under Info; Project archive shows active, closed, and archived durable rows without a visibility toggle, grouping them under the always-visible Pinned / All projects / Archived strips (D168/D267/D455) with per-section counts in a one-column workbench. The destination renders no hero block and no page-level counter run: the intro is one quiet description line, and each group strip's count agrees with its rendered rows; a click selects a row without leaving Settings; sorting by Name reorders rows inside every section without hiding any; search matches project fields and session titles and reports a match count, a session-title result selects its owning project, lists sessions in the inspector by latest activity with relative update times, and reveals history in batches of eight; clearing the search restores the complete index. The inspector menu closes on Escape and on an outside press. Bootstrap completion and background refreshes do not return Settings or Extensions to the chat home; the destination changes only after an explicit navigation action. Restore keeps the archive open and activation returns to chat with the restored project retained in the sidebar. Opening an archived session succeeds before clearing its archived state, returns to chat with that session selected, and makes it visible in the project sidebar; returning to Project archive no longer shows that session as archived. The home sidebar and global page results have no standalone Projects destination; Settings search finds Project archive; Plugins remains an independent app-shell destination.
+- **Preconditions**: App running with developer mode enabled, at least one configured provider, one retained project, and one archived project.
+- **Steps**:
+  1. Open Settings and inspect the complete settings rail.
+  2. Open General and change the theme in its Appearance card using the
+     searchable theme picker.
+  3. Open AI and inspect the Permissions and Defaults cards, including the
+     Command shell row; confirm Context management has no settings card.
+  4. Open Shortcuts and inspect the Keyboard shortcuts card.
+  5. Open Instructions and save global instructions.
+  6. Open Models and inspect the provider studio and inline import action.
+  7. Open Skills and MCP and confirm each has its own external-import action.
+  8. Open Projects and Info in order.
+  9. Search Settings for "project" or "archive".
+  10. In Projects, compare each group strip's count with its rendered rows.
+  11. Switch the sort control from Recent to Name.
+  12. Search for a known session title, confirm the owning project is selected
+      and its inspector lists matching sessions, then reveal more than eight
+      sessions; clear the search with the clear affordance.
+  13. Open the inspector menu, dismiss it with Escape and with an outside press.
+  14. Restore the archived project, then activate it.
+  15. Archive one project session, open it from Projects, and return to Projects.
+  16. Return to the app shell and open Plugins.
+- **Expected**: The rail contains exactly General, AI, Shortcuts, Instructions, Models, Skills, MCP, Subagents, Projects, Cloud sync, Remote Hosts, and Info in that order, each with its semantic Lucide icon (Sliders / Sparkles / Keyboard / FileText / Bot / BookOpen / Server / Bot / Archive / CloudDownload / Globe / Info). The flat directory is visually grouped under four muted, non-interactive headings — Preferences / 偏好 for General, AI, and Shortcuts; Agent / 智能体 for Instructions and Models; Workspace / 工作区 for Projects; About / 关于 for Info — with whitespace and no divider lines between groups; searching keeps the destination results flat and hides empty groups together with their headings. Appearance remains in General, while Permissions, Defaults, and the Command shell row live under 全局 AI; an available selected shell is represented by the selector without a duplicate Configured status, while default, fallback, and no-effective-shell states remain explicit; Context management has no settings card; Keyboard shortcuts and global instructions have their own destinations; Developer lives under Info; Projects shows active, closed, and archived durable rows without a visibility toggle, grouping them under the always-visible Pinned / All projects / Archived strips (D168/D267/D455) with per-section counts in a one-column workbench. The destination renders no hero block and no page-level counter run: the intro is one quiet description line, and each group strip's count agrees with its rendered rows; a click selects a row without leaving Settings; sorting by Name reorders rows inside every section without hiding any; search matches project fields and session titles and reports a match count, a session-title result selects its owning project, lists sessions in the inspector by latest activity with relative update times, and reveals history in batches of eight; clearing the search restores the complete index. The inspector menu closes on Escape and on an outside press. Bootstrap completion and background refreshes do not return Settings or Extensions to the chat home; the destination changes only after an explicit navigation action. Restore keeps the archive open and activation returns to chat with the restored project retained in the sidebar. Opening an archived session succeeds before clearing its archived state, returns to chat with that session selected, and makes it visible in the project sidebar; returning to Project archive no longer shows that session as archived. The home sidebar and global page results have no standalone Projects destination; Settings search finds Projects; Plugins remains an independent app-shell destination.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/01-ui-ia.md`, `03-runtime/11-provider-model-system.md`
-- **Acceptance**: B (model configuration), F (session import)
+- **Acceptance**: B (model configuration), F (project persistence)
 - **Milestone**: M4
 - **Status**: Unit-covered (`settings-project-archive.test.mjs`, `project-archive.test.mjs`, `sidebar-navigation.test.mjs`); rendered scenario Draft
 
@@ -2909,7 +2921,7 @@ identify the platform validation still needed.
 #### E2E-043: Settings content follows window width
 
 - **Preconditions**: App running windowed on macOS with Settings open.
-- **Steps**: 1) Open Basics at the default window width and record the content-card width. 2) Expand the window to 1600px wide. 3) Open Model configuration, Import, and Project archive. 4) Shrink the window to the supported 800px minimum.
+- **Steps**: 1) Open General at the default window width and record the content-card width. 2) Expand the window to 1600px wide. 3) Open Models, Skills, MCP, and Projects. 4) Shrink the window to the supported 800px minimum.
 - **Expected**: The right-side content cards expand and contract with the available pane at every tested width; the 275px rail and pane gutters remain stable; controls remain visible without clipping or horizontal page scrolling.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/07-ui-design-system.md`
 - **Acceptance**: Quality (key operations feel polished)
@@ -5908,7 +5920,7 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   2. Inspect the rendered `BrandLogo` source in the sidebar and startup splash,
      and inspect the light eight-frame `HomeMascotLogo` GIF in the empty-home
      hero. Hover the mascot and verify that its cadence does not change.
-  3. Switch the theme to dark (Settings → Basics → Appearance, or system appearance change).
+  3. Switch the theme to dark (Settings → General → Appearance, or system appearance change).
   4. Re-inspect the same surfaces without reloading.
   5. Switch back to light and re-inspect.
 - **Expected**:
@@ -9371,20 +9383,20 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 | D — Workspace | E2E-012, E2E-013, E2E-022B, E2E-024I, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060, E2E-068, E2E-075, E2E-078, E2E-153, E2E-158, E2E-182, E2E-187, E2E-252 |
 | D — Workspace (project ordering) | E2E-253 |
 | E — Tools & permissions | E2E-008a, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-024I, E2E-024K, E2E-040, E2E-049, E2E-074, E2E-093, E2E-097, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102d, E2E-102e, E2E-102g, E2E-103, E2E-105, E2E-106, E2E-107, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-119, E2E-121, E2E-122, E2E-142, E2E-145, E2E-147, E2E-155, E2E-158, E2E-166, E2E-181, E2E-PLUGIN-imported-pi-package-skills |
-| F — Persistence | E2E-020, E2E-021, E2E-021a, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062, E2E-064, E2E-066, E2E-068, E2E-071, E2E-072, E2E-073, E2E-082, E2E-084, E2E-096, E2E-098, E2E-102, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-102i, E2E-103, E2E-AGENTS-001, E2E-061a, E2E-073a, E2E-104, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-118, E2E-119, E2E-120, E2E-121, E2E-123, E2E-142, E2E-146, E2E-146a, E2E-148, E2E-151, E2E-158, E2E-160, E2E-168, E2E-171, E2E-177, E2E-178, E2E-183, E2E-186, E2E-005J, E2E-PLUGIN-session-orchestrator-real-workers |
+| F — Persistence | E2E-020, E2E-021, E2E-021a, E2E-038, E2E-SETTINGS-inline-capability-imports, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062, E2E-064, E2E-066, E2E-068, E2E-071, E2E-072, E2E-073, E2E-082, E2E-084, E2E-096, E2E-098, E2E-102, E2E-102b, E2E-102c, E2E-102d, E2E-102g, E2E-102i, E2E-103, E2E-AGENTS-001, E2E-061a, E2E-073a, E2E-104, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-118, E2E-119, E2E-120, E2E-121, E2E-123, E2E-142, E2E-146, E2E-146a, E2E-148, E2E-151, E2E-158, E2E-160, E2E-168, E2E-171, E2E-177, E2E-178, E2E-183, E2E-186, E2E-005J, E2E-PLUGIN-session-orchestrator-real-workers |
 | F — Persistence (project ordering) | E2E-251 |
 | G — Plugins | E2E-022, E2E-022A, E2E-022B, E2E-022C, E2E-023, E2E-024, E2E-024B, E2E-024C, E2E-024D, E2E-024AA, E2E-024E, E2E-024W, E2E-024F, E2E-024G, E2E-024H, E2E-024I, E2E-024J, E2E-024K, E2E-024L, E2E-024M, E2E-024N, E2E-024O, E2E-024P, E2E-025, E2E-026, E2E-105, E2E-117, E2E-120, E2E-122, E2E-123, E2E-024Q, E2E-148, E2E-152, E2E-153, E2E-PLUGIN-imported-pi-package-skills, E2E-PLUGIN-imported-pi-package-wrapper, E2E-PLUGIN-import-extension-installs-dependencies, E2E-PLUGIN-import-extension-reports-missing-dependency, E2E-PLUGIN-global-shortcut-owns-only-its-own-command, E2E-PLUGIN-permission-gate-for-real-time-capabilities, E2E-PLUGIN-background-audio-and-realtime-connection, E2E-PLUGIN-fs-root-follows-the-calling-session |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042, E2E-096, E2E-098, E2E-104, E2E-107, E2E-108, E2E-109, E2E-110, E2E-113, E2E-115, E2E-116, E2E-118, E2E-121, E2E-146, E2E-146a, E2E-155, E2E-159, E2E-176, E2E-194, E2E-195 |
-| Security | E2E-028, E2E-029, E2E-030, E2E-024J, E2E-024K, E2E-024M, E2E-049, E2E-068, E2E-086, E2E-102c, E2E-102d, E2E-102e, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-113, E2E-115, E2E-116, E2E-117, E2E-119, E2E-121, E2E-122, E2E-123, E2E-142, E2E-148, E2E-151, E2E-153, E2E-158, E2E-187, E2E-196c, E2E-196b, E2E-196, E2E-PLUGIN-fs-root-follows-the-calling-session |
-| Quality | E2E-CHAT-long-history-stream-keeps-responsive, E2E-CHAT-running-status-survives-output-pauses, E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-196, E2E-201, E2E-204, E2E-202, E2E-203, E2E-205, E2E-206, E2E-207, E2E-208, E2E-209, E2E-210, E2E-UPDATE-preference-and-once-only-reminder, E2E-218, E2E-259, E2E-219, E2E-250, E2E-252, E2E-102i, E2E-SUBAGENT-settlement-updates-before-parent-poll, E2E-PLUGIN-imported-pi-package-skills, E2E-PLUGIN-fs-root-follows-the-calling-session, E2E-SUBAGENT-resume-a-settled-delegation |
+| Security | E2E-SETTINGS-inline-capability-imports, E2E-028, E2E-029, E2E-030, E2E-024J, E2E-024K, E2E-024M, E2E-049, E2E-068, E2E-086, E2E-102c, E2E-102d, E2E-102e, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-112, E2E-113, E2E-115, E2E-116, E2E-117, E2E-119, E2E-121, E2E-122, E2E-123, E2E-142, E2E-148, E2E-151, E2E-153, E2E-158, E2E-187, E2E-196c, E2E-196b, E2E-196, E2E-PLUGIN-fs-root-follows-the-calling-session |
+| Quality | E2E-SETTINGS-inline-capability-imports, E2E-CHAT-long-history-stream-keeps-responsive, E2E-CHAT-running-status-survives-output-pauses, E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-094, E2E-095, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-103, E2E-AGENTS-001, E2E-021a, E2E-024N, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-111, E2E-114, E2E-117, E2E-118, E2E-119, E2E-120, E2E-122, E2E-123, E2E-142, E2E-143, E2E-144, E2E-145, E2E-146, E2E-147, E2E-148, E2E-150, E2E-151, E2E-153, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-168, E2E-172, E2E-173, E2E-174, E2E-011g, E2E-176, E2E-177, E2E-178, E2E-179, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-196, E2E-201, E2E-204, E2E-202, E2E-203, E2E-205, E2E-206, E2E-207, E2E-208, E2E-209, E2E-210, E2E-UPDATE-preference-and-once-only-reminder, E2E-218, E2E-259, E2E-219, E2E-250, E2E-252, E2E-102i, E2E-SUBAGENT-settlement-updates-before-parent-poll, E2E-PLUGIN-imported-pi-package-skills, E2E-PLUGIN-fs-root-follows-the-calling-session, E2E-SUBAGENT-resume-a-settled-delegation |
 | Quality (project ordering) | E2E-253 |
 | C — Conversation & stream (IME slash alias) | E2E-255 |
 | E — Tools & permissions (Skill residency) | E2E-254 |
 | Quality (Skill residency and IME slash alias) | E2E-254, E2E-255 |
-| C — Conversation & stream (import visibility) | E2E-257 |
-| F — Persistence (import visibility) | E2E-257 |
-| G — Plugins (import visibility) | E2E-257 |
-| Quality (import visibility) | E2E-257 |
+| C — Conversation & stream (plugin session import visibility) | E2E-257 |
+| F — Persistence (plugin session import visibility) | E2E-257 |
+| G — Plugins (session import visibility) | E2E-257 |
+| Quality (plugin session import visibility) | E2E-257 |
 | Quality (Windows updater cache) | E2E-260 |
 | G — Plugins (Session Orchestrator) | E2E-PLUGIN-session-orchestrator-real-workers |
 | Security (Session Orchestrator) | E2E-PLUGIN-session-orchestrator-real-workers |
@@ -9422,7 +9434,7 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 |---|---|
 | Post-MVP experimental interaction maintenance | E2E-LIVE-VOICE-four-stage-ui |
 | M1 | E2E-001, E2E-002, E2E-003, E2E-028, E2E-029 |
-| M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-008d, E2E-008e, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-020, E2E-021, E2E-021a, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-COMPOSER-narrow-controls, E2E-144, E2E-005J, E2E-201, E2E-202, E2E-207, E2E-206 |
+| M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-008d, E2E-008e, E2E-009, E2E-010, E2E-011, E2E-011a, E2E-011b, E2E-011d, E2E-011e, E2E-011g, E2E-020, E2E-021, E2E-021a, E2E-027, E2E-031, E2E-042, E2E-087, E2E-088, E2E-088b, E2E-089, E2E-090, E2E-COMPOSER-narrow-controls, E2E-144, E2E-005J, E2E-201, E2E-202, E2E-207, E2E-206 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
 | M5 | E2E-CHAT-long-history-stream-keeps-responsive, E2E-CHAT-running-status-survives-output-pauses, E2E-008a, E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-048A, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066, E2E-067, E2E-068, E2E-069, E2E-070, E2E-071, E2E-072, E2E-073, E2E-074, E2E-075, E2E-076, E2E-077, E2E-078, E2E-079, E2E-080, E2E-081, E2E-082, E2E-083, E2E-084, E2E-085, E2E-086, E2E-092, E2E-093, E2E-096, E2E-097, E2E-098, E2E-099, E2E-100, E2E-101, E2E-102, E2E-102a, E2E-102b, E2E-102c, E2E-102d, E2E-102e, E2E-AGENTS-001, E2E-059a, E2E-060b, E2E-060c, E2E-061a, E2E-073a, E2E-094, E2E-095, E2E-143, E2E-145, E2E-146, E2E-146a, E2E-147, E2E-177, E2E-178, E2E-180, E2E-181, E2E-182, E2E-183, E2E-186, E2E-187, E2E-194, E2E-195, E2E-204, E2E-208, E2E-CHAT-content-width-handles, E2E-250, E2E-252, E2E-102i |
@@ -9430,7 +9442,7 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 | M2 (IME slash alias) | E2E-255 |
 | M5 (Skill residency) | E2E-254 |
 | M6 | E2E-104, E2E-105, E2E-106, E2E-107, E2E-108, E2E-109, E2E-110, E2E-111, E2E-112, E2E-113, E2E-114, E2E-115, E2E-116, E2E-117, E2E-118, E2E-119, E2E-120, E2E-103, E2E-172 |
-| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-202, E2E-203, E2E-205, E2E-209, E2E-210, E2E-UPDATE-preference-and-once-only-reminder, E2E-212, E2E-213, E2E-214, E2E-215, E2E-216, E2E-217, E2E-218, E2E-259, E2E-219, E2E-257, E2E-SUBAGENT-settlement-updates-before-parent-poll, E2E-PLUGIN-fs-root-follows-the-calling-session, E2E-SUBAGENT-resume-a-settled-delegation |
+| M6+ | E2E-121, E2E-122, E2E-148, E2E-150, E2E-151, E2E-154, E2E-155, E2E-158, E2E-159, E2E-160, E2E-161, E2E-162, E2E-163, E2E-166, E2E-168, E2E-173, E2E-174, E2E-176, E2E-179, E2E-196a, E2E-196b, E2E-196c, E2E-198, E2E-199, E2E-200, E2E-202, E2E-203, E2E-205, E2E-209, E2E-SETTINGS-inline-capability-imports, E2E-210, E2E-UPDATE-preference-and-once-only-reminder, E2E-212, E2E-213, E2E-214, E2E-215, E2E-216, E2E-217, E2E-218, E2E-259, E2E-219, E2E-257, E2E-SUBAGENT-settlement-updates-before-parent-poll, E2E-PLUGIN-fs-root-follows-the-calling-session, E2E-SUBAGENT-resume-a-settled-delegation |
 | M6+ (Session Orchestrator) | E2E-PLUGIN-session-orchestrator-real-workers |
 | M6+ (Selected model order) | E2E-MODEL-selected-order-persists |
 | M6+ (MCP server timeout override) | E2E-261 |
@@ -9721,9 +9733,9 @@ This test plan spec is accepted when:
 ### US-UI-24 Settings full-page shell
 - Open Settings (footer profile → Settings).
 - Expect **full-page** Codex settings (no app sidebar/nav). Left rail has Back
-  to app, search, and exactly Basics / 全局 AI / Shortcuts / Model configuration /
-  Import / Project archive / Info in that order; content pane shows section title and the
-  destination's settings or archive content.
+  to app, search, and exactly General / AI / Shortcuts / Instructions / Models /
+  Skills / MCP / Subagents / Projects / Cloud sync / Remote Hosts / Info in that
+  order; content pane shows the selected destination.
 - Return to the app shell and expect Plugins to remain an independent
   sidebar-footer destination.
 - Drag the empty 46px top band over either the rail or content pane; the native
@@ -9930,17 +9942,21 @@ This test plan spec is accepted when:
   a standalone New task row.
 
 ### US-UI-52 Settings gold chrome metrics (D070)
-- Open Settings light Basics at ~1200×690.
-- Expect ~275px `#f4f4f4` rail, single active Basics pill, Back + search.
+- Open Settings light General at ~1200×690.
+- Expect ~275px `#f4f4f4` rail, single active General pill, Back + search.
 - Expect the working theme selector without inert toggle or open-target rows.
-- Expect Permissions + Basics + Appearance elevated cards; Agent,
-  Import, and Info remain the only other destinations.
+- Expect Appearance in General and Permissions + Defaults in AI. The rail
+  contains General, AI, Shortcuts, Instructions, Models, Skills, MCP,
+  Subagents, Projects, Cloud sync, and Info; Remote Hosts appears only in
+  developer mode. Voice may appear between AI and Shortcuts in development
+  builds with developer mode on; plugin-contributed destinations follow the
+  core groups. There is no Import destination.
 - Resize between 800px, 1200px, and 1600px widths; the content cards fill the
   available right pane at each size without changing the rail or introducing
   horizontal scrolling.
 
 ### US-UI-53 Settings dark shell (D070)
-- Dark theme Settings Basics: black rail, elevated cards, blue on-toggles, Back returns to chat.
+- Dark theme Settings General: black rail, elevated cards, blue on-toggles, Back returns to chat.
 - Row descriptions use theme-aware secondary text and remain clearly readable on
   the `#212121` card surface; they must not fall back to low-contrast muted ink.
 
@@ -10579,7 +10595,7 @@ This test plan spec is accepted when:
   distinct from the built-in token stack (for example PingFang SC); a clean
   `~/.pi-desktop` profile.
 - **Steps**:
-  1) Open Settings → Basics and confirm the Appearance card shows a Font row
+  1) Open Settings → General and confirm the Appearance card shows a Font row
      below Theme and Language with a trigger labeled "System default".
   2) Open the Font picker and confirm it lists System default followed by
      installed system families only — no bundled open-licensed families and no
@@ -12914,11 +12930,11 @@ are withdrawn with ADR 0165.
   endpoint and different keys, and optionally one OAuth-only vendor.
   PI-Desktop may already have an equivalent provider.
 - **Steps**:
-  1. Open Settings → Import. Confirm a Sessions card and a Model
-     configuration card, each with its own Scan.
-  2. Scan model configuration. Confirm groups start collapsed, rows show
-     name, model count, host, and an API key / No API key badge, and that
-     no secret value appears in the UI or in the scan IPC payload.
+  1. Open Settings → Models and expand **Import from other tools**. Confirm
+     the inline workbench is idle until Scan is activated.
+  2. Scan model configuration. Confirm source groups start expanded, rows
+     show name, model count, host, and an API key / No API key badge, and no
+     secret value appears in the UI or scan IPC payload.
   3. Import the selected providers. Confirm both same-endpoint profiles appear
      as separate rows under Settings → Models and remain selectable in the
      Composer model menu. Re-import the same selection and confirm those
@@ -12927,7 +12943,7 @@ are withdrawn with ADR 0165.
      becomes the default. If a default already existed, confirm it is
      unchanged.
   5. Confirm an OAuth-only source account is absent from the candidate
-     list and that session import still works independently.
+     list.
 - **Expected**: Explicit scan only (D007). Stored API keys land in the host
   secret store. Only equivalent providers (normalized URL + API style + same
   credential) skip; different credentials at one endpoint remain separate.
@@ -12935,11 +12951,42 @@ are withdrawn with ADR 0165.
 - **Specs linked**: `04-ux/06-settings-ia.md`,
   `04-ux/08-component-spec.md` §18.5, `03-runtime/01-ipc-protocol.md`,
   `03-runtime/11-provider-model-system.md`, ADR 0179, D342
-- **Acceptance**: B (model configuration), F (session import)
+- **Acceptance**: B (model configuration)
 - **Milestone**: M4
 - **Status**: Unit-covered (`packages/shared/src/model-config-import.test.ts`,
   `apps/desktop/test/model-config-import.test.mjs`); full UI journey Draft
   (run only in a capable environment when this surface changes)
+
+#### E2E-SETTINGS-inline-capability-imports: Import skills and MCP in their owning pages
+
+- **Preconditions**: A supported external skill and MCP configuration are
+  available. At least two projects exist. One MCP source is disabled and its URL
+  includes userinfo and query credentials.
+- **Steps**:
+  1. Open Settings → Skills, select Project and a project, then expand Scan
+     other tools. Confirm opening the panel does not scan. Scan, select a skill,
+     choose its copy or link mode, and import it.
+  2. Confirm the new skill belongs to the selected project. Change the project
+     and confirm the prior candidates and selection are cleared.
+  3. Open Settings → MCP, select Project and the same project, expand Scan
+     other tools, scan, select the disabled MCP candidate, and import it.
+  4. Confirm the server belongs to that project, remains disabled, and the
+     candidate row shows only the URL host without userinfo, path, or query.
+  5. Change project scope and confirm the prior MCP candidates and selection
+     are cleared.
+- **Expected**: Skills and MCP scans start only after an explicit Scan action.
+  Project scans and writes carry the selected project path; scope changes clear
+  stale candidates. MCP disabled state is preserved and URL credentials never
+  render in candidate metadata.
+- **Specs linked**: `04-ux/06-settings-ia.md`,
+  `04-ux/08-component-spec.md` §18.3 / §18.6 / §18.7, ADR 0319 / D645
+- **Acceptance**: F (persistence), Security, Quality
+- **Milestone**: M6+
+- **Status**: Source-contract and scoped IPC tests covered
+  (`settings-import-page.test.mjs`, `agent-capability-settings.test.mjs`,
+  `agent-import-ipc.test.mjs`, `import-format.test.mjs`). The project MCP scan,
+  selection, import, visible result, and scoped payload are exercised by
+  `pnpm test:e2e:settings-inline-import` in an isolated Electron fixture.
 
 #### E2E-210: Documentation screenshots resolve from GitHub and VitePress
 
@@ -14827,29 +14874,26 @@ plugin-form fixtures in an isolated temporary directory at runtime.
 - **Milestone**: M5 (project organization maintenance).
 - **Status**: Unit/source-contract covered (`apps/desktop/test/project-create-dialog.test.mjs`);
   full UI scenario remains Draft.
-#### E2E-257: Importing into an archived project restores its visibility
+#### E2E-257: Plugin session import into an archived project restores its visibility
 
 - **Preconditions**: A durable project has been archived in the renderer
-  sidebar preferences and is hidden from the default sidebar. A core import
-  candidate has that project's path, and a test plugin can import a session
-  with an explicit host project id.
+  sidebar preferences and is hidden from the default sidebar. A test plugin
+  can import a new session with an explicit host project id.
 - **Steps**:
   1. Open Settings → Project archive and confirm the archived project remains
      available there while the default sidebar omits it.
-  2. Scan and import the core candidate whose project path belongs to the
-     archived project.
-  3. Confirm the project and its imported session appear in the default
+-  2. Use the plugin's `session.importBatch` with the existing project's id
+     and wait for the host session refresh event.
+-  3. Confirm the project and its newly imported session appear in the default
      sidebar, then archive the project again.
-  4. Use the plugin's `session.importBatch` with the existing project's id and
-     inspect the sidebar after the host refresh event.
-  5. Refresh sessions without importing anything, import a pathless session,
-     and repeat an already imported session.
-- **Expected**: Each successful import that adds a project-bound session clears
-  the archived presentation state for that exact normalized project path and
-  makes the project/session discoverable. Ordinary refreshes, pathless
-  sessions, skipped imports, and plugin history paths without an explicit
-  project binding leave archive state unchanged; no host project row or
-  transcript is deleted or recreated.
+-  4. Refresh sessions without importing anything, then use
+     `session.importBatch` for a pathless session and for a duplicate or
+     skipped session.
+- **Expected**: A successful plugin import that adds a project-bound session
+  clears the archived presentation state for that exact normalized project
+  path and makes the project/session discoverable. Ordinary refreshes,
+  pathless sessions, skipped imports, and repeated imports leave archive state
+  unchanged; no host project row or transcript is deleted or recreated.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/08-component-spec.md`,
   `03-runtime/04-data-storage.md`, ADR 0236, D407
 - **Acceptance**: C (conversation & stream), F (persistence), G (plugins),
@@ -14869,22 +14913,23 @@ plugin-form fixtures in an isolated temporary directory at runtime.
   `# AGENTS.md`, `You are Codex`, `<environment>`) and at least one session
   whose stored timestamps are corrupt or out of range.
 - **Steps**:
-  1. Run Settings → Session import → Scan over the archive.
-  2. Inspect candidate titles and the createdAt/updatedAt shown per session.
-  3. Import a session whose first real user message follows synthetic
-     injections.
+  1. Run `node --test test/importer-codex-scan.test.mjs` from `apps/desktop`.
+  2. Confirm test coverage for synthetic title filtering and timestamp fallback.
+  3. Confirm an archive above the file cap reports truncation metadata and
+     includes only the newest 250 files.
 - **Expected**: Candidate titles come from the first real user message —
   synthetic injections never surface as titles, while genuinely pasted
   markdown that starts with `#` (for example `# Role: …`) is kept. Sessions
   whose user messages are all synthetic do not appear as candidates. A
   corrupt or out-of-range stored timestamp falls back to the source file's
-  mtime, never to the import moment.
+  mtime, never to the import moment. An archive above 250 session files returns
+  the newest 250 by folder date plus truncated-count metadata; Settings no
+  longer renders the retired session-import cap note.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
-  `04-ux/06-settings-ia.md`, D320
+  D320
 - **Acceptance**: C (conversation & stream), F (persistence), Quality
 - **Milestone**: M6+
-- **Status**: Unit-covered (`importer-codex-scan.test.mjs`); UI journey Draft
-  (run only in a capable environment when this surface changes)
+- **Status**: Unit-covered (`importer-codex-scan.test.mjs`); no Settings UI journey
 
 #### E2E-LAYOUT-three-column-width-priority
 

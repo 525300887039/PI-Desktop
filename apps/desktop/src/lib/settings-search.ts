@@ -14,7 +14,6 @@ export type SettingsTabId =
   | "skills"
   | "mcp"
   | "subagents"
-  | "import"
   | "projects"
   | "sync"
   | "remoteHosts"
@@ -186,6 +185,14 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       // Subscription accounts share the service list (D625).
       "settings.vendorAccounts",
       "settings.vendorSubscription",
+      "settings.importTitle",
+      "settings.importModelsScanDesc",
+      "settings.importModelsTitle",
+      "settings.importSourceClaudeCode",
+      "settings.importSourceOpenCode",
+      "settings.importSourceCodex",
+      "settings.importSourcePi",
+      "settings.importSourceCcSwitch",
     ],
   },
   {
@@ -199,6 +206,9 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "settings.globalScopeDescription",
       "settings.projectScopeDescription",
       "settings.importSkill",
+      "settings.importSkillFromTools",
+      "settings.importAgentSkillsTitle",
+      "settings.importAgentSkillsDesc",
       "settings.capabilityFilterGlobal",
       "settings.capabilityFilterProject",
       "extensions.skills.add",
@@ -218,6 +228,9 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "settings.globalScopeDescription",
       "settings.projectScopeDescription",
       "settings.addMcp",
+      "settings.importMcpFromTools",
+      "settings.importAgentMcpTitle",
+      "settings.importAgentMcpDesc",
       "settings.editMcp",
       "settings.transport",
       "settings.capabilityFilterGlobal",
@@ -247,21 +260,6 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "extensions.subagents.presetFixerName",
       "extensions.subagents.presetUiDesignerName",
       "extensions.subagents.tools",
-    ],
-  },
-  {
-    id: "import",
-    labelKey: "settings.nav.import",
-    titleKey: "settings.import",
-    group: "workspace",
-    keywordKeys: [
-      "settings.importTitle",
-      "settings.importModelsTitle",
-      "settings.importSourceClaudeCode",
-      "settings.importSourceOpenCode",
-      "settings.importSourceCodex",
-      "settings.importSourcePi",
-      "settings.importSourceCcSwitch",
     ],
   },
   {
