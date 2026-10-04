@@ -90,12 +90,12 @@ test("Cloud sync is reachable in every build without developer mode", () => {
       }
     }
   }
-  // Cloud sync is public but still Experimental: the rail row and page title
-  // keep the badge, and no developer or build gate remains.
+  // Cloud sync is a regular destination now: no developer or build gate and no
+  // Experimental badge remain.
   const sync = SETTINGS_NAV.find((entry) => entry.id === "sync");
   assert.equal(sync?.developerOnly, undefined);
   assert.equal(sync?.developmentOnly, undefined);
-  assert.equal(sync?.experimentalBadgeKey, "settings.configSync.experimental");
+  assert.equal(sync?.experimentalBadgeKey, undefined);
 });
 
 test("developer mode retains the developer-only destinations in development", () => {

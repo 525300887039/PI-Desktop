@@ -1036,7 +1036,6 @@ export const ptBR = {
     },
     configSync: {
       title: "Sincronização na nuvem",
-      experimental: "Experimental",
       connectionTitle: "Sincronização na nuvem via WebDAV",
       connectionDescription: "Sincronize configurações portáteis através de um cofre criptografado WebDAV. O histórico de conversas, arquivos-fonte e estados de execução nunca são incluídos.",
       errorTitle: "A sincronização requer atenção",

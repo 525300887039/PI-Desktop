@@ -120,13 +120,13 @@ async function setSettingsSearch(value) {
   await settle();
 }
 async function checkCloudSyncVisibility() {
-  // Cloud sync is a public Experimental destination: no developer mode needed.
+  // Cloud sync is a regular destination: no developer mode and no badge.
   await setSettingsSearch("Cloud sync");
   const syncButton = navButton("Cloud sync");
   assert(syncButton, "Cloud sync must appear in settings search without developer mode");
   assert(
-    syncButton.querySelector(".settings-nav-experimental")?.textContent?.trim() === "Experimental",
-    "Cloud sync's rail entry must stay marked Experimental",
+    !syncButton.querySelector(".settings-nav-experimental"),
+    "Cloud sync's rail entry must not carry the Experimental badge",
   );
 
   flushSync(() => syncButton.click());
@@ -136,8 +136,8 @@ async function checkCloudSyncVisibility() {
     "Cloud sync must open its page without developer mode",
   );
   assert(
-    document.querySelector(".settings-section-title")?.textContent?.includes("Experimental"),
-    "Cloud sync's page title must stay marked Experimental",
+    !document.querySelector(".settings-section-title")?.textContent?.includes("Experimental"),
+    "Cloud sync's page title must not carry the Experimental badge",
   );
   await setSettingsSearch("");
 
@@ -161,6 +161,11 @@ async function checkCloudSyncVisibility() {
   settings = { ...settings, developerMode: true };
   flushSync(() => useAppStore.setState({ settings }));
   await settle();
+  assert(
+    navButton("Remote hosts")?.querySelector(".settings-nav-experimental")
+      ?.textContent?.trim() === "Experimental",
+    "Remote hosts must keep the Experimental badge",
+  );
   await select("Remote hosts");
   assert(
     useAppStore.getState().settingsTab === "remoteHosts",
