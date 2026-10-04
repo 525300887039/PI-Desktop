@@ -777,7 +777,6 @@ sklm: {
       "skills": "Habilidades",
       "mcp": "MCP",
       "subagents": "Subagentes",
-      "import": "Importar",
       "projects": "Proyectos",
       "sync": "Sincronización en la nube",
       "remoteHosts": "Hosts remotos",
@@ -1168,7 +1167,6 @@ sklm: {
     "skillSaved": "Guardado {{name}}",
     "subagentCreated": "Creado {{name}}",
     "subagentSaved": "Guardado {{name}}",
-    "import": "Importar",
     "projectArchive": "Archivo de proyecto",
     "remoteHosts": {
       "title": "Hosts remotos",
@@ -1219,7 +1217,6 @@ sklm: {
     "importFound": "Sesiones encontradas: {{count}}",
     "importFound_one": "1 sesión encontrada",
     "importFound_other": "{{count}} sesiones encontradas",
-    "importCodexCapped": "Codex se limita a los {{limit}} archivos de sesión más recientes (por fecha de carpeta).",
     "importNone": "No se encontraron sesiones importables en esta máquina.",
 
     "importSelectAll": "Seleccionar todo",
@@ -1230,9 +1227,6 @@ sklm: {
     "importMessages_other": "{{count}} mensajes",
     "importMessagesUnknown": "—",
     "importNoProject": "Sin proyecto",
-    "importSessionCount": "{{count}} sesiones",
-    "importSessionCount_one": "1 sesión",
-    "importSessionCount_other": "{{count}} sesiones",
     "importSelectedCount": "{{count}} seleccionada",
     "importGroupBy": "Agrupar por",
     "importGroupByPath": "Ruta del proyecto",

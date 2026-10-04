@@ -40,10 +40,10 @@ test("composer converts oversized text paste and materializes clipboard files", 
     composer,
     /createFileReference\(file\.path, file\.name, sessionId, \{[\s\S]*kind: file\.kind/,
   );
-  assert.match(composer, /serializeComposerFileReferences\(text, activeFileReferences\)/);
+  assert.match(composer, /serializeComposerFileReferences\(outgoing\.text, outgoing\.references\)/);
   assert.match(
     composer,
-    /const serializedContent = serializeComposerFileReferences\(text, activeFileReferences\)/,
+    /const serializedContent = serializeComposerFileReferences\(outgoing\.text, outgoing\.references\)/,
   );
   // The draft is a contenteditable rich field: sentinels render as atomic
   // chips and every caret write goes through the DOM-range helper.
