@@ -118,7 +118,13 @@ OpenAI 风格的 Copilot 线路 API 仍将令牌作为请求密钥签名；所�
 `forceAdaptiveThinking: true`。这些模型会以 HTTP 400 拒绝
 `thinking.type=enabled`，而 Pi catalog 不携带 pi-ai 的 compat 记录，缺少该标志时
 pi-ai 会回落到 budget 思考。仍发布 `budget_tokens` 的模型保持 budget 思考，显式的
-目录 `compat` 记录会被保留。
+目录 `compat` 记录会被保留。对于已启用推理、但没有 `thinkingProtocol` 或推理选项的
+非 OAuth 通用模型配置，如果模型 ID 含有 `claude` 且 wire API 为 Anthropic Messages，也默认使用
+adaptive 思考；这覆盖缺少元数据的未发布 Claude 中继模型 ID。仅实时提供的 OAuth 厂商模型
+保留原有回退行为。显式的
+`ModelBinding.thinkingProtocol`（`legacy` 或 `adaptive`）优先级最高，其次是显式的
+模型级 `compat.forceAdaptiveThinking`，再之后才根据目录元数据或 Claude ID 回退规则判断。
+对于目录中已发布的模型，模型设置会根据相同的 effort/budget 元数据推导并显示协议。
 
 目录无法识别的 Anthropic Messages 行（例如某个自定义网关 URL 提供多家发布方都列出的
 模型 ID）仍回退到通用模型形状，但当 Anthropic 自己的 Pi catalog 记录中存在完全相同的

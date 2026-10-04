@@ -498,20 +498,25 @@
 
 ### E2E-PROVIDER-adaptive-thinking-protocol
 
-- **Preconditions:** Isolated provider settings fixture with an Anthropic
-  Messages provider and models `claude-opus-5-5` and a legacy Claude model;
+- **Preconditions:** Isolated provider settings fixture with a non-OAuth
+  Anthropic Messages provider, `claude-opus-5-5`, a legacy Claude model, and a
+  Claude-named relay id whose generic model config has no protocol or
+  reasoning-options metadata;
   no live credentials.
 - **Steps:** Open a configured model's Advanced settings, inspect the
   thinking-protocol row, save an adaptive model with `medium`, then submit a
   request through the local Anthropic transport fixture. Repeat with the
-  legacy model.
+  legacy model. Submit a request with the protocol unset for the generic relay
+  model, then repeat after selecting its legacy protocol.
 - **Expected:** The adaptive model sends `thinking.type=adaptive` and
   `output_config.effort=medium`; the legacy model sends the existing
   budget-based thinking shape. Omitting the new field on an old binding keeps
   the existing inference after reload: effort-only models use adaptive, while
   models publishing `budget_tokens` (including effort + budget combinations)
-  retain budget thinking. Explicit standard/adaptive selections override
-  those defaults.
+  retain budget thinking. The metadata-free generic Claude relay defaults to
+  adaptive, while its explicit legacy selection sends budget thinking. An
+  explicit per-model `compat.forceAdaptiveThinking` value overrides automatic
+  inference when no protocol is selected.
 - **Specs:** 03-runtime/11-provider-model-system; 03-runtime/12-provider-config-schema.
 - **Acceptance:** Provider/model protocol selection and wire compatibility.
 - **Milestone:** Maintenance.
