@@ -418,6 +418,10 @@ a usage tab.
     row and keeps the global default model in sync when that account is selected
   - Test connection resolves the account's OAuth authorization and reports a
     transient success or failure without probing the provider with an API key
+  - At viewport widths up to 940px, both provider and vendor-account model
+    panes stack without shrinking to the remaining dialog height. Each model
+    list scrolls within its bounded tray; the dialog body scrolls to reach
+    either tray. Short, wide windows retain the side-by-side layout.
 - **Providers** studio:
   - OpenAI-compatible and custom-service add-provider dialog (opened from Add
     provider / empty-state CTA)
