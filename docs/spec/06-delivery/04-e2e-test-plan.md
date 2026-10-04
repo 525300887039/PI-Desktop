@@ -9220,16 +9220,16 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 
 ### E2E-CONFIG-SYNC-webdav-portable-configuration
 
-- **Preconditions:** A built task candidate, isolated host profile with
-  developer mode initially off, and a local
-  WebDAV fixture that supports strong ETags and conditional PUT, plus a fixture
-  variant that ignores conditional headers but supports `PROPFIND` directory
-  listing. No real WebDAV account, provider, or production desktop.
+- **Preconditions:** A built task candidate, an isolated host profile, and a
+  local WebDAV fixture that supports strong ETags and conditional PUT, plus a
+  fixture variant that ignores conditional headers but supports `PROPFIND`
+  directory listing. No real WebDAV account, provider, or production desktop.
+  Developer mode starts off so the public destination is exercised as shipped.
 - **Steps:** 1) Open Settings with developer mode off; confirm Cloud sync is
-  absent from the rail and settings search returns no Cloud sync result. 2) Open
-  Settings → Info → Developer, enable developer mode, and confirm Cloud sync
-  appears in the rail and settings search. Open it and confirm the Experimental
-  badge appears beside the rail row and page title. 3) Enter the fixture URL,
+  present in the rail and returned by settings search, then open it and
+  confirm the Experimental badge appears beside the rail row and page title.
+  2) Toggle developer mode on and off and confirm the destination stays
+  reachable either way. 3) Enter the fixture URL,
   device label, directory, and backup password. 4) Run the capability test and
   confirm it uses temporary objects. 5) Select provider/MCP/skill categories
   while leaving credentials and memory off; enable credentials in a second
@@ -9253,9 +9253,10 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   refreshes in the background. Confirm a configured endpoint reuses its stored
   WebDAV app password, while password fields themselves remain blank and no
   vault password is written to renderer storage.
-- **Expected:** With developer mode off, Cloud sync is absent from the rail and
-  settings search; enabling developer mode reveals the destination and its
-  Experimental badges without changing sync behavior. Strict mode refuses
+- **Expected:** Cloud sync is reachable in every build without developer mode,
+  keeps its Experimental badge beside the rail row and page title, and
+  neither its availability nor its behavior changes when developer mode is
+  toggled. Strict mode refuses
   unreliable conditional writes. The explicit
   compatibility mode accepts only a server that proves bounded directory
   listing, explains that it is not atomic CAS, and retains per-device tips for
@@ -9279,9 +9280,9 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 - **Milestone:** M6+.
 - **Status:** Draft; merge/crypto, in-process WebDAV conditional-write
   coverage, and the two-device host/WebDAV path are automated by
-  `pnpm test:e2e:config-sync`. The Settings visibility gate is automated by
-  `pnpm test:e2e:settings-scroll`; full renderer-driven password persistence
-  assertions and checkpoint-level local recovery fault injection remain.
+  `pnpm test:e2e:config-sync`. Public Cloud sync visibility without developer
+  mode is asserted by `settings-developer-only-destinations.test.mjs`; full
+  renderer-driven persistence and checkpoint recovery fault injection remain.
 
 **E2E-CHAT-session-todo-checklist: TodoWrite to session-aware TodoDock**
 
@@ -16255,9 +16256,9 @@ the latest destination. These assertions measure work counts, not device FPS.
 - Automated coverage: `pnpm test:e2e:settings-scroll` mounts the production
   SettingsPage, store, translations, and built CSS in isolated Electron. Only
   preload data is stubbed; search navigation uses SearchDialog's public store
-  entry points. It also checks the Cloud sync developer-mode gate, Experimental
-  badges, and fallback to General. This covers renderer interaction, not host
-  persistence or the full global-search dialog.
+  entry points. It also checks Cloud sync visibility without developer mode,
+  the Experimental badges, and the fallback to General. This covers renderer
+  interaction, not host persistence or the full global-search dialog.
 
 ### E2E-SCHEDULED-dispatch
 
