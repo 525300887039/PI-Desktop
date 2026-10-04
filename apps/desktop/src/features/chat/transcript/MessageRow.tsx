@@ -123,6 +123,35 @@ export const MessageRow = memo(function MessageRow({
         attachment.kind !== "session" && !inline.has(attachment.ref),
     );
   }, [message.attachments, message.content, workspaceRoot]);
+  // An attachment the body does not already name inline continues the body
+  // text instead of taking a line of its own above it.
+  const attachmentChips = extraAttachments.length ? (
+    <span
+      className="message-attachments"
+      role="list"
+      aria-label={t("chat.messageAttachments")}
+    >
+      {extraAttachments.map((attachment) =>
+        attachment.kind === "image" ? (
+          <MessageAttachmentImage
+            key={`${attachment.ref}:${attachment.name}`}
+            attachment={attachment}
+            onOpenFile={openFileRef}
+          />
+        ) : (
+          <span key={`${attachment.ref}:${attachment.name}`} role="listitem">
+            <FileRefChip
+              name={attachment.name}
+              path={attachment.ref}
+              kind={attachment.kind}
+              mimeType={attachment.mimeType}
+              onOpen={openFileRef}
+            />
+          </span>
+        ),
+      )}
+    </span>
+  ) : null;
   const beginEdit = async () => {
     if (!editableUserMessage || isRunning || loadingEdit) return;
     const request = new AbortController();
@@ -256,36 +285,6 @@ export const MessageRow = memo(function MessageRow({
               </form>
             ) : isUser ? (
               <>
-                {extraAttachments.length ? (
-                  <div
-                    className="message-attachments"
-                    role="list"
-                    aria-label={t("chat.messageAttachments")}
-                  >
-                    {extraAttachments.map((attachment) =>
-                      attachment.kind === "image" ? (
-                        <MessageAttachmentImage
-                          key={`${attachment.ref}:${attachment.name}`}
-                          attachment={attachment}
-                          onOpenFile={openFileRef}
-                        />
-                      ) : (
-                        <span
-                          key={`${attachment.ref}:${attachment.name}`}
-                          role="listitem"
-                        >
-                          <FileRefChip
-                            name={attachment.name}
-                            path={attachment.ref}
-                            kind={attachment.kind}
-                            mimeType={attachment.mimeType}
-                            onOpen={openFileRef}
-                          />
-                        </span>
-                      ),
-                    )}
-                  </div>
-                ) : null}
                 {message.content ? (
                   <div className="message-user-text selectable">
                     {editableUserMessage && message.command ? (
@@ -305,8 +304,9 @@ export const MessageRow = memo(function MessageRow({
                     ) : (
                       <LinkifiedText text={String(message.content || "")} attachments={message.attachments} />
                     )}
+                    {attachmentChips}
                   </div>
-                ) : null}
+                ) : attachmentChips}
               </>
             ) : (
               <div className="prose-chat">

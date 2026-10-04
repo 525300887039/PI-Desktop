@@ -12801,7 +12801,8 @@ are withdrawn with ADR 0165.
   JSONL stores an `attachments/<sha256>` image ref with a stored mimeType.
 - **Steps**:
   1. Reopen the session. Confirm the pasted image renders as a chip like any
-     other attachment, and that hovering or focusing it reveals its preview card.
+     other attachment, continuing the body text instead of heading it, and that
+     hovering or focusing it reveals its preview card.
   2. Click the chip. Confirm the host files viewer opens on that
      attachment ref and shows the image.
   3. Send a turn whose assistant markdown includes `![](docs/pixel.png)` and
