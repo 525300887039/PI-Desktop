@@ -108,6 +108,25 @@ globalThis.composerModelSelectionProbe = async () => {
   if (recentRows.length !== 3 || !recentRows[0].textContent?.includes("model-d") || !recentRows[2].textContent?.includes("model-b")) {
     throw new Error("The first model menu must show exactly the three most recent models in order");
   }
+  recentRows[2].dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+  await settle();
+  const otherModels = document.querySelector<HTMLButtonElement>(".composer-menu-root [aria-expanded]")!;
+  otherModels.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+  otherModels.focus();
+  await settle();
+  if (document.querySelector(".composer-model-list .kb-active")) {
+    throw new Error("Moving from a recent model to Other models must clear stale keyboard highlight");
+  }
+  const keyboardSearch = document.querySelector<HTMLInputElement>(".composer-model-search input")!;
+  keyboardSearch.focus();
+  keyboardSearch.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+  await settle();
+  if (!document.querySelector(".composer-model-list .kb-active")) throw new Error("Arrow navigation must highlight a model");
+  otherModels.focus();
+  // The offscreen window does not own OS focus; deliver the native focusout edge.
+  keyboardSearch.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: otherModels }));
+  await settle();
+  if (document.querySelector(".composer-model-list .kb-active")) throw new Error("Leaving search must clear keyboard highlight");
   recentRows[2].click();
   await settle();
   if (!document.querySelector(".composer-menu-root [role=menuitemradio]")?.textContent?.includes("model-d")) {

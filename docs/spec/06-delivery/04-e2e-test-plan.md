@@ -16686,6 +16686,8 @@ host-created files. The full app's file-preview viewer is covered separately.
   a message is accepted, at which point that model moves first.
 - Search immediately without expanding Other models; choose using keyboard
   navigation. Expand Other models inline and verify no duplicate recent rows.
+  Move from the third recent row to Other models, and tab out of search after
+  arrow navigation: no stale keyboard highlight remains on a model row.
   Without history, all configured models are directly visible. Verify thinking
   defaults still follow the selected binding and manual same-model levels survive.
 - Create a new chat: it inherits the last actually used model. Reload local preferences

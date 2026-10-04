@@ -53,6 +53,7 @@ export function ComposerModelList({
                   autoCorrect="off"
                   autoCapitalize="off"
                   onChange={(event) => setQuery(event.target.value)}
+                  onBlur={() => setModelHighlight(-1)}
                 />
               </label>
               <div className="composer-model-list" ref={modelListRef}>
@@ -68,7 +69,6 @@ export function ComposerModelList({
                           data-model-index={index}
                           className={`composer-plus-item composer-model-option ${modelHighlight === index ? "kb-active" : ""}`}
                           title={`${providerDisplayName(provider)} · ${model.modelId}`}
-                          onMouseMove={() => setModelHighlight(index)}
                           onClick={() => void selectModel(provider, model.modelId)}
                         >
                           <span className="composer-model-option-main">
@@ -122,7 +122,6 @@ export function ComposerModelList({
                             className={`composer-plus-item composer-model-option ${active ? "active" : ""} ${modelHighlight === index ? "kb-active" : ""}`}
                             role="menuitemradio"
                             aria-checked={active}
-                            onMouseMove={() => setModelHighlight(index)}
                             onClick={() => void selectModel(group.provider, model.modelId)}
                           >
                             <span className="composer-model-option-main">

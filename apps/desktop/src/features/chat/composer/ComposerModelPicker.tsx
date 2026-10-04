@@ -104,7 +104,7 @@ export function ComposerModelPicker({
         </TooltipButton>
       )}
     >
-      <div className="composer-menu-root">
+      <div className="composer-menu-root" onMouseMove={() => setModelHighlight(-1)} onMouseLeave={() => setModelHighlight(-1)}>
         {rootActions}
         <ComposerModelList
           t={t} query={query} setQuery={setQuery}
