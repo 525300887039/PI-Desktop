@@ -2303,9 +2303,12 @@ identify the platform validation still needed.
   changes occur. The keyboard hint includes Shift+Enter and a submit hint, while the
   command/file hint includes `/` and `@`. The slash menu still contains `/new`,
   `/compact`, `/agent-mode`, `/plan-mode`, and `/goal-mode`, followed by a
-  Skills group at the bottom. Selecting the Skill inserts its slash id; sending
-  it keeps the typed command chip visible and the model calls `Skill` with that
-  id before answering. zh-CN shows the matching localized copy, including
+  Skills group at the bottom. Selecting a Skill inserts `/skill:<id>`; sending
+  it keeps the typed command chip visible and the model calls `Skill` with the
+  original ID before answering. Verify builtin, plugin, and user Skill prefixes,
+  multiple inline references, and a prompt template sharing the unprefixed
+  Skill name; inactive and unknown Skills must not resolve. zh-CN shows the
+  matching localized copy, including
   `Shift+Enter for newline · Use Send to submit`.
   Long descriptions use only the space remaining after command names and
   hints, so short names stay fully visible. Descriptions and oversized names
