@@ -230,6 +230,7 @@ export const de = {
   },
   "chat": {
     "tableActions": "Tabellenaktionen",
+    "markdownPlainTextFallback": "Große Antworten werden zur besseren Reaktionsfähigkeit als Klartext angezeigt.",
     "copyTableMarkdown": "Tabelle als Markdown kopieren",
     "exportTableCsv": "Tabelle als CSV herunterladen",
     "tablePreview": "Tabelle vergrößern",
