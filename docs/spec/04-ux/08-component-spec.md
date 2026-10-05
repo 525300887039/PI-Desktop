@@ -2005,6 +2005,19 @@ Renderer: `apps/desktop/src/components/Markdown.tsx` + `apps/desktop/src/lib/shi
   across the whole message, and footnotes also number, reuse and back-link
   across it, so the message renders as one parse context and gives up per-block
   memoization for as long as it streams.
+- **Bounded large content**: transcript linkification uses one shared per-tree
+  budget of 128 Ki UTF-16 code units, at most 512 file candidates and 256
+  generated links; one file candidate is at most 512 code units, while URLs
+  have their separate 16 Ki candidate limit. Exceeded ranges remain verbatim
+  text, and each new conversion starts with a fresh budget. Markdown skips
+  synchronous full-source formatting above 128 Ki code units. During streaming,
+  an oversized unparsed tail stays verbatim while any trusted stable prefix
+  remains formatted; a message above the full-source bound stays verbatim after
+  streaming ends. The visible localized notice explains the display downgrade.
+  Searchable/copyable source and source offsets continue to use the complete
+  message. Smooth text release stops above 32 Ki code units. Shiki returns to
+  plain text before splitting when code exceeds 100,000 code units, 800 lines,
+  or a 2,000-code-unit line; tool output uses the same guard.
 - **Plugins**: `remark-gfm` (tables, task lists, strikethrough, autolinks),
   `remark-math` + `rehype-katex` (inline `$…$` or `\(…\)`, display `$$…$$`
   or `\[…\]`). Raw HTML is
