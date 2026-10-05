@@ -230,6 +230,7 @@ export const fr = {
   },
   "chat": {
     "tableActions": "Actions du tableau",
+    "markdownPlainTextFallback": "La réponse volumineuse est affichée en texte brut pour préserver la réactivité.",
     "copyTableMarkdown": "Copier le tableau en Markdown",
     "exportTableCsv": "Télécharger le tableau en CSV",
     "tablePreview": "Agrandir le tableau",

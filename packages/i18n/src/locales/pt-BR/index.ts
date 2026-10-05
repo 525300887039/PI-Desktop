@@ -229,6 +229,7 @@ export const ptBR = {
   },
   chat: {
     tableActions: "Ações da tabela",
+    markdownPlainTextFallback: "Respostas extensas são exibidas como texto simples para manter a interface responsiva.",
     copyTableMarkdown: "Copiar tabela como Markdown",
     exportTableCsv: "Baixar tabela como CSV",
     tablePreview: "Expandir tabela",

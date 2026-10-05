@@ -239,6 +239,7 @@ export const tr = {
   },
   chat: {
     tableActions: "Tablo işlemleri",
+    markdownPlainTextFallback: "Büyük yanıtlar arayüzün duyarlı kalması için düz metin olarak gösterilir.",
     copyTableMarkdown: "Tabloyu Markdown olarak kopyala",
     exportTableCsv: "Tabloyu CSV olarak indir",
     tablePreview: "Tabloyu büyüt",

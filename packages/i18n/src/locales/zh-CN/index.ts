@@ -232,6 +232,7 @@ export const zhCN = {
   },
   chat: {
     tableActions: "表格操作",
+    markdownPlainTextFallback: "内容较长，为保持界面响应速度，现以纯文本显示。",
     copyTableMarkdown: "复制表格为 Markdown",
     exportTableCsv: "下载表格为 CSV",
     tablePreview: "放大表格",
