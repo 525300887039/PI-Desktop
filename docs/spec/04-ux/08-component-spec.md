@@ -2881,10 +2881,9 @@ reasoning-level control.
   collapsed content is `aria-hidden` and reduced-motion users receive an
   immediate state change. A collapsed dock reserves only its header row: the
   list's inset is clipped, never laid out below the header.
-  below the header. Completed rows use a success-tinted tile with a check
-  icon, in-progress rows use the accent tint, and cancelled rows are muted;
-  each status symbol has a localized accessible
-  name and each row renders plain text.
+  Completed rows use a success-tinted tile with a check icon, in-progress rows
+  use the accent tint, and cancelled rows are muted. Each status symbol has a
+  localized accessible name, and each row renders plain text.
 - Renderer snapshots are keyed by session id. A `todos.changed` event with an
   older or equal revision is ignored. Session activation and host recovery
   re-read the authoritative snapshot, including already cached checklists; a
