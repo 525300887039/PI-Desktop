@@ -4170,7 +4170,9 @@ identify the platform validation still needed.
   the before/after drop indicator, resulting order, and unchanged active tab;
   hold a drag at each strip edge until hidden tabs scroll into view, then verify
   the indicator follows the newly visible targets. Repeat with
-  `Alt+ArrowLeft`/`Alt+ArrowRight`. 4) Click `+` twice and verify each click
+  `Alt+ArrowLeft`/`Alt+ArrowRight`. With only one or two tabs, drag unused
+  header space to move the native window; tab and action clicks must still
+  work without moving it. 4) Click `+` twice and verify each click
   creates and activates a separate New launcher tab. Confirm the launcher body
   contains Review plus each in-scope plugin view exactly once as clickable rows;
   there is no work-panel dropdown or popup. Click Browser from one New tab and
