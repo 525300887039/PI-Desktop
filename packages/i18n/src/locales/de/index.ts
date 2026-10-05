@@ -284,7 +284,6 @@ export const de = {
       "progress": "{{completed}}/{{total}} erledigt",
       "current": "{{completed}}/{{total}} · Aktuell: {{content}}",
       "completed": "{{completed}}/{{total}} erledigt",
-      "more": "{{count}} weitere Elemente",
       "updated": "Checkliste aktualisiert",
       "updating": "Checkliste wird aktualisiert",
       "status": { "pending": "Offen", "in_progress": "In Bearbeitung", "completed": "Erledigt", "cancelled": "Abgebrochen" }

@@ -9388,8 +9388,10 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 - **Steps**: Start a multi-step Agent turn that calls `TodoWrite` with ordered
   pending and `in_progress` items. Observe the TodoDock above the Composer,
   expand it, switch sessions, and confirm the checklist stays session-scoped.
-  Complete and cancel items, confirm the bounded eight-row display and the
-  all-cancelled label, then clear the checklist and reload/restart the host.
+  Expand a checklist longer than the dock's height cap: every row must render
+  and the list must scroll inside the dock without growing the Composer stack.
+  Complete and cancel items, confirm the all-cancelled label, then clear the
+  checklist and reload/restart the host.
   Deliver an out-of-order older `todos.changed` event and confirm it cannot
   replace the newer snapshot. Exercise invalid payload, Plan/Goal, delegated,
   and remote-session paths.
@@ -9397,6 +9399,7 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   advances revision, including clear, and emits one committed `todos.changed`
   snapshot. Invalid or unauthorized writes do not mutate or emit. TodoDock
   renders plain text, does not take focus, resets expansion on session changes,
+  lists every ordered row with the dock's own list as the scrollport,
   keeps a collapsed dock to its header height,
   rejects stale events, and skips local recovery for `remote:` sessions because
   RACP v1 has no Todo snapshot operation.
@@ -9410,8 +9413,9 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   the production renderer, and a real host/SQLite profile. Only the external
   model stream and preload transport are fixtures; no live provider or user
   profile is used. The scenario includes Unicode truncation with warning replay,
-  single-active-item normalization, a
-  failed initial read followed by host recovery without changing sessions,
+  single-active-item normalization, full-list rendering with the dock's
+  internal scroll, a failed initial read followed by host recovery without
+  changing sessions,
   cached-snapshot reconciliation, and stale-event rejection. Runtime
   `runtime-todos.test.ts` exercises Agent tool validation, overlong content
   normalization, and continuation through a deterministic provider.
