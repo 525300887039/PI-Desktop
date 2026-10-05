@@ -11256,13 +11256,15 @@ This test plan spec is accepted when:
   end, the whole-line deletion removes that line without leaving a blank line or
   touching its neighbours, and the CRLF file keeps CRLF endings. The missing
   `old_string` fails with `EDIT_LEGACY_MATCH_FAILED` and leaves the file
-  unchanged.
+  unchanged. A replacement whose only effect would be toggling the terminal
+  newline fails with `EDIT_NO_CHANGE` and leaves the file unchanged.
 - **Specs linked**: `03-runtime/18-line-anchored-edit-contract.md` §11
 - **Acceptance**: E (tools & permissions)
 - **Milestone**: M5+
 - **Status**: Automated (host-core unit tests:
   `edit_legacy_replacement_preserves_unmatched_bytes`,
   `edit_legacy_identical_replacement_leaves_file_unchanged`,
+  `edit_legacy_terminal_newline_only_change_reports_no_change`,
   `edit_accepts_legacy_old_string_new_string_shape`)
 
 #### E2E-142: Background delegation converges through TaskWait and honors permission scopes
